@@ -46,16 +46,19 @@ What whatsleftisright.com does. A golf pass must keep every line true.
  7. The tab's title is "Which way is down?". The label's second line says what is
     here; the third gives Haeckel's name for its figure (Generelle Morphologie,
     1866, vol. I, Table II and the contents of chapter XIII), its category and
-    real type ("Eudipleura, Homo-Form"), for the shape as drawn, or, where his
-    figures have no place for it, "incertae sedis". The label gives the page's
-    own size, read live, and one line.
+    real type ("Eudipleura, Homo-Form"), for the shape as made, or, where his
+    figures have no place for it, "incertae sedis". While a creature is drawn, the
+    next line says what it is after, as a museum credits a copy: the manuscript, its
+    date and leaf, or the author, book, year and plate, the most particular of them
+    linked to where it is kept. The label gives the page's own size, read live, and
+    one line.
  8. "what's right" draws, in dotted line, a plain solid whose symmetry is exactly the
     body's, after Haeckel's figures: a pyramid, a double pyramid, a regular solid,
     a three-sided pyramid; for a turned body his egg or spheroid; where he has no
     form, a ratchet's.
  9. The medium is specks carried by idealised flows, the same in every view:
-    down, they rise past the body at 0.25 a second; forward, they stream back at
-    0.5; a spin turns body and medium together once in 12 seconds; a stretch is
+    down, they fall at 0.25 a second, as snow; forward, they stream back at
+    the body's own speed, at most 0.5; a spin turns body and medium together once in 12 seconds; a stretch is
     pure strain, 0.3 a second along it. With nothing given they wander. These
     rates are chosen, not measured. Motion is worked in fixed steps of 1/240 s;
     with reduced motion nothing moves.
@@ -93,30 +96,38 @@ What whatsleftisright.com does. A golf pass must keep every line true.
 14. A screen reader hears the world and what it leaves ("Down and forward. One
     mirror is left."), and "Placed." while a foundling is.
 15. A click on the drawing, not a drag, drops a crumb there, at the middle's depth
-    (at most 12). The flows carry it as they carry the specks. The body goes for
-    the nearest crumb by its own strokes, which share its symmetry, so only along
-    the directions its group keeps (as Curie has it): any way, within its mirror,
-    along its axis, or not at all; at 0.3 a second (chosen), slowing within 0.015
-    of where it can come nearest. The body stays in the middle and the rest moves
-    past it. A crumb within 0.02 of it is eaten, and a line under the label counts
-    what is eaten this visit, beside the foundlings placed.
+    (at most 12). The flows carry it as they carry the specks. The body goes by its
+    own strokes, which share its symmetry, so only along the directions its group
+    keeps (as Curie has it): any way, within its mirror, along its axis, or not at
+    all; at 0.3 a second (chosen), slowing within 0.015 of where it can come
+    nearest; and only for a crumb it can get there, the nearest such. The body
+    stays in the middle and the rest moves past it. A crumb within 0.02 of it is
+    eaten, and a line under the label counts what is eaten this visit, beside the
+    foundlings placed.
+16. The favicon is two eyes, each looking out its own side. The console gives the
+    Greek word for left, aristeros, and what it says: the better one. That is the
+    standard account, from aristos, best, the left called the better to avert its
+    omen; Beekes calls the deeper root uncertain. The 404 says nothing is left.
 17. A body going forward turns for a crumb it cannot reach, or that has fallen
     behind it, since the stream outruns its stroke: the least turn that brings the
-    crumb ahead of it and within reach, at 60 degrees a second (chosen), about down,
-    or about the spin's or the stretch's axis if down is not given, or about any
-    axis if none is. With the medium's directions on different axes it does not
-    turn. Going 0.5 a second and turning 60 degrees a second, it turns on a circle
-    of radius 0.48, and nothing inside that circle can be reached by turning:
-    for a crumb there it goes on straight until the stream has carried the crumb
-    out to one and a half times as far from the circle's centre (chosen), then
-    turns. While it turns it strokes only along the turn's axis, where its symmetry
-    lets it, so that the circle stays the one reckoned, climbing or sinking to the
-    crumb meanwhile. A turn about an axis its group keeps, as a spin is kept, moves
+    crumb ahead of it and within reach, about down, or about the spin's or the
+    stretch's axis if down is not given, or about any axis if none is. With the
+    medium's directions on different axes it does not turn. It turns at 4 a second
+    times the turn still to make, at most 60 degrees a second (chosen), and slows to
+    turn, going at 0.5 times the cosine of that turn, at least 0.05 (chosen); its
+    turning, its speed and its stroke each follow their aims smoothly, through a
+    critically damped filter of 6 a second (chosen), so that none of them jumps.
+    Nothing inside the circle it turns on can be reached by turning: for a turn of
+    more than 30 degrees with the crumb there, it goes on straight until the stream
+    has carried the crumb out to one and a half times as far from the circle's
+    centre (chosen), then turns. While it turns it strokes only along the turn's
+    axis, where its symmetry lets it, climbing or sinking to the crumb meanwhile. A turn about an axis its group keeps, as a spin is kept, moves
     with every turn and mirror the body has, so it carries the directions the body
     can go onto themselves and brings no crumb nearer. Every turn it makes is
-    therefore one its symmetry forbids, and it bends while it turns: each point
-    moved toward the turn by half the square of its distance along forward
-    (chosen), the label naming the symmetry the bent body keeps. A turned body,
+    therefore one its symmetry forbids, and it bends while it turns, as much as it
+    turns: each point moved toward the turn by up to half the square of its distance
+    along forward (chosen). The label keeps naming the form it was made with, as through
+    a stride: a turn is a pose, and Haeckel's types are of forms. A turned body,
     drawn whole, and a foundling do not turn.
 18. In a world that leaves just one mirror, "another body" brings, one time in three
     (chosen), a beast from the bestiaries instead, the elephant or the hedgehog
@@ -130,7 +141,57 @@ What whatsleftisright.com does. A golf pass must keep every line true.
     spines set along its surface's outward way and tipped back toward the tail. Its mirror is set on the world's,
     its feet against down and its head forward. While the world leaves just one
     mirror it stays; otherwise the body beneath it is drawn, and it is back when the
-    world is.
+    world is. In a world that leaves five turns and five mirrors, the same comes of
+    the brittle star after Haeckel's Ophiodea plate (Kunstformen der Natur, 1904,
+    plate 10), figure 1: a disc lobed between its arms, five jointed arms fringed at every
+    joint with fans of spines, and the five jaws of its mouth, set on the world's
+    turns and mirrors with its mouth against down. It has no eyes. Where four turns
+    and four mirrors are left comes the moon jelly, Aurelia, after his Discomedusae
+    plate (plate 98), seen from below: a flat bell of eight lobes fringed with 48
+    tentacles, four horseshoe gonads, an eye at each of the eight notches of its
+    margin, and four frilled mouth arms. Haeckel draws the arms curling one way round,
+    which keeps its turns and not its mirrors; here they hang in the mirrors' planes.
+    Where six of each are left comes the jellyfish Carmarina, after his Trachomedusae
+    plate (plate 26), figures 1 and 7: a domed bell with a six-armed star of gonad
+    leaves under it on its canals, a long stalk ending in six lips, at each canal's
+    end a long tentacle coiling in its mirror's plane, and between them a short one
+    arching up about the bell, set with nettle clusters. Where three of each are left
+    comes the iris, after Koehler's Medizinal-Pflanzen (Gera, 1887), Iris pallida,
+    Haeckel's plates having none: three falls drooping, each with its beard,
+    three standards cupped upright between them, three crested style arms over the
+    falls with a stamen under each, the ovary three-lobed as the plate's figure 6 cuts
+    it, and the stem to its foot. Its leaves, standing in a fan, and the rhizome they
+    rise from keep no three turns, and are left out. Where two of each are left comes
+    the radiolarian Petalospyris dinoceras, after Haeckel's Report on the Radiolaria
+    (the Challenger's, 1887), plate 87, figure 12: a nut-shaped shell, mammillate,
+    a lobe either side of its sagittal ring, a spindle-shaped horn one and a half
+    times the shell's length, and a flared coronet of broad truncate feet (the text's
+    twenty-five to thirty, taken at 28). Where nothing is left, the flounder,
+    Pleuronectes flesus, after Bloch's Oeconomische Naturgeschichte der Fische
+    Deutschlands (1782-84), Taf. XLIV: on its blind side, both eyes on its eyed side
+    by the dorsal edge, the dorsal fin from over the eyes to the tail and the anal fin
+    shorter; it is set by the world's directions, its eyed side against down. Turned
+    whole about an arrow, the flask Lagena, which is Ehrenberg's Ovulina (Kunstformen,
+    plate 81), its neck ringed, its few basal teeth left out. Where a mirror across
+    the axis is left too: with two turns, Ehrenberg's Stephanastrum rhombus
+    (Mikrogeologie, 1854, Taf. XXXVI, fig. 33a), four arms joined in a rhomb; with
+    four, Haeckel's Acanthostaurus purpurascens (Die Radiolarien, 1862, Taf. XIX),
+    twenty spines in Mueller's five circles, the four of the equator long; with three,
+    five or six, Heliodiscus glyphodon (Kunstformen, plate 11), a disc whose marginal
+    spines, "of variable size" in the text, are taken twice as many, alternately
+    large and small; turned whole, Coccodiscus lamarckii (Report on the Radiolaria,
+    plate 36), a lens in chambered rings, the rings' beams left out. Where nothing is
+    given: with three, Tetraplagia phaenaxonia (Report, plate 91), four spines along a
+    tetrahedron's axes, their irregular branches taken regular; with four, Centrocubus
+    cladostylus (Report, plate 18), thirty-two club-shaped spines from about a cube;
+    with five, Circogonia icosahedra (Kunstformen, plate 1), twenty plates and twelve
+    spines, the mouth on one plate left out; turned, a Sphaerozoum colony
+    (Kunstformen, plate 51), its sphere of jelly alone, since only a ball keeps every
+    turn and mirror. The label's types for the tetrahedron, the cube and the
+    icosahedron are not figured; Haeckel's Report on the Radiolaria finds those
+    ground-forms in Tetraplagia, Centrocubus and Circogonia. A creature of turns and
+    mirrors is its group's copies of one piece, as a body is, but the piece is drawn
+    from the plate.
 19. "what's left", pressed from the first, draws, through the body's middle in every view, the directions its
     own strokes can take it: those every turn and mirror it keeps leaves where they
     are, the same space its motion is confined to. Where it keeps one mirror that is
@@ -150,7 +211,34 @@ What whatsleftisright.com does. A golf pass must keep every line true.
     down is given, else along the axis of the most turns the body keeps, and its
     right along forward where forward is given, else along a mirror, so that b sees
     that mirror face-on.
-16. The favicon is two eyes, each looking out its own side. The console gives the
-    Greek word for left, aristeros, and what it says: the better one. That is the
-    standard account, from aristos, best, the left called the better to avert its
-    omen; Beekes calls the deeper root uncertain. The 404 says nothing is left.
+21. Where down is given it is weight. A body with a wing (a thin blade) flies, and
+    goes as above. Else a body whose lowest point is on a limb has legs, and jumps;
+    else it walks. The elephant walks, as elephants cannot jump and the Physiologus
+    gives it no knees; the hedgehog jumps; the brittle star, the flounder and the
+    foraminifer walk; the medusae swim and the radiolarians and the colony drift, as
+    fliers do. The iris is rooted: it never goes, turns or leaps, in any world,
+    and eats what reaches it; with forward alone the stream goes past it, as a river
+    past a reed. A jumper, a walker or a rooted creature stands on the ground
+    through its lowest point, drawn ruled, moving under it as it goes: it strokes
+    only across down, and not while it turns. What falls to the ground lies there,
+    and moves with the ground; snow that reaches it is gone. A crumb clicked under the
+    ground falls to it from the height of the body's middle, straight above where it
+    was clicked (chosen). It eats what lies on
+    the ground once it is over it: once the line up from the crumb comes within 0.02
+    of one of its parts. A jumper leaps for a crumb still
+    falling that is over it and within 1.2 (chosen), rising to the crumb's height
+    and falling back under a weight of 4 a second each second (chosen).
+22. A beast on its ground walks at the speed of the ground under it: a trot, left
+    fore with right hind and right fore with left hind, half a stride apart, each leg
+    swung whole about its hip by up to 0.35 radians, about 20 degrees (chosen), the
+    elephant's on legs without knees. At almost every moment the walking beast keeps
+    no mirror; the mirror and half a stride together keep its walk, and the label
+    names that. At rest its legs hang straight. The creatures of turns and mirrors
+    have no legs, and glide.
+23. When a direction is turned and the world's symmetry grows (its order rises,
+    the same directions given), the turns and mirrors it now keeps flash once in
+    every view, in the glaze, fading over 1.2 seconds (chosen): its turn axes as
+    lines, its mirrors as their planes, at most 12, or the ring where it keeps only
+    the turn through the middle. Giving or taking away a direction does not flash.
+    The line under the label counts the forms the visitor's world has taken this
+    visit, from the second on.
