@@ -1,0 +1,1174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Which way is down?</title>
+<meta name="description" content="Pick one.">
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="tokens.css?6">
+<style>
+body{margin:0;padding:3rem 16px 1.4rem;min-height:100svh;box-sizing:border-box;display:flex;flex-direction:column;background:var(--paper);color:var(--ink);font:19px/1.5 var(--book);font-variant-numeric:oldstyle-nums}
+main,.by{width:100%;max-width:68rem;margin:0 auto}
+main{flex:1}
+nav,.label{max-width:34rem}
+main.beside{display:grid;grid-template-columns:auto 24rem;grid-template-rows:1fr auto auto;column-gap:40px}
+main.beside canvas{grid-column:1;grid-row:1/4}
+main{position:relative}
+#square{position:absolute;transform:translateX(-100%);font:.8rem/1.6 var(--typewriter)}
+#square[hidden]{display:none}
+main.beside nav{grid-column:2;grid-row:2;margin-top:0}
+main.beside .label{grid-column:2;grid-row:3}
+canvas{display:block;touch-action:none;cursor:grab}
+canvas:active{cursor:grabbing}
+canvas:focus-visible,button:focus-visible{outline:1px solid var(--rule);outline-offset:6px}
+nav{display:flex;flex-wrap:wrap;align-items:baseline;gap:.2rem 1.2rem;margin-top:1rem;font:.8rem/1.6 var(--typewriter)}
+nav span{display:flex;gap:.6rem}
+nav .row{flex-basis:100%;gap:1.2rem}
+nav #world{gap:.6rem}
+nav span[hidden]{display:none}
+:root{--g-base:var(--junsplash-base);--g-accent:var(--junsplash-accent)}
+button{font:inherit;background:none;border:0;padding:0;color:var(--g-base,var(--ink));cursor:pointer}
+button[aria-pressed=true]{color:var(--ink);text-decoration:underline;text-underline-offset:.2em}
+nav.guess #world button[aria-pressed=true]{text-decoration-style:dotted}
+#glaze{width:.62em;height:.62em;border-radius:50%;position:relative;top:calc(.31em - .5ex)}
+#glaze:not([hidden]){display:flex}
+.label{margin-top:2rem}
+.label p{margin:0;line-height:1.35}
+.label .l{margin-top:.5rem}
+.t{font-size:1.1rem}
+.m{font-variant-caps:all-small-caps;letter-spacing:.04em}
+.d{font-variant-numeric:lining-nums tabular-nums}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+a{color:var(--g-accent,var(--ink));text-underline-offset:.15em}
+.by{margin-top:3rem;text-align:right;font-size:.8rem}
+</style>
+</head>
+<body>
+<main id="main">
+<canvas id="c" tabindex="0" aria-label="A body in a world: a plan from above and two elevations from the side. Drag a direction's head to turn it; drag the body, or use the arrow keys, to turn the body; drag around it to turn the views."></canvas>
+<button id="square" hidden>square</button>
+<nav id="nav">
+<span id="mode" class="row"><button aria-pressed="true">free play</button><button aria-pressed="false">find match</button></span>
+<span class="row"><button id="again">another body</button><span id="parts"><button>2</button><button>3</button><button>4</button><button aria-pressed="true">5</button><button>6</button><button>&infin;</button></span></span>
+<span id="world" class="row"><button aria-pressed="true">down</button><button aria-pressed="true">forward</button><button aria-pressed="false">spin</button><button aria-pressed="false">stretch</button></span>
+<span class="row"><button id="room" aria-pressed="true">what's left</button><button id="form" aria-pressed="false">what's right</button></span>
+<span class="row"><button id="theme" hidden>dark</button><button id="glaze" hidden></button></span>
+</nav>
+<p class="sr" id="s" aria-live="polite"></p>
+<div class="label" id="label">
+<p class="t">whatsleftisright.com</p>
+<p class="m" id="what">a body, down, forward</p>
+<p id="kind"><i>Eudipleura</i>, Homo-Form</p>
+<p>2026</p>
+<p class="d"><span id="self">&ndash;</span> bytes</p>
+<p class="l" id="line">Pick one.</p>
+<p id="tally" hidden></p>
+</div>
+</main>
+<p class="by" id="by">by <a href="https://github.com/bonchicbongenre/aristeros">bonchicbongenre</a></p>
+<script>
+// Lengths are in a body's own units: its middle is the origin, and it reaches about 1.
+const{PI:P,sin,cos,abs,sqrt,min,max,atan2}=Math;
+
+// Vectors, and 3 by 3 matrices as 9 numbers, row by row.
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],
+  add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]],
+  sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],
+  mul=(a,s)=>[a[0]*s,a[1]*s,a[2]*s],
+  cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],
+  len=a=>sqrt(dot(a,a)),unit=a=>mul(a,1/len(a)),
+  mv=(m,v)=>[m[0]*v[0]+m[1]*v[1]+m[2]*v[2],m[3]*v[0]+m[4]*v[1]+m[5]*v[2],m[6]*v[0]+m[7]*v[1]+m[8]*v[2]],
+  mm=(a,b)=>{const r=[];for(let i=0;i<9;i+=3)for(let j=0;j<3;j++)r.push(a[i]*b[j]+a[i+1]*b[j+3]+a[i+2]*b[j+6]);return r},
+  tr=m=>[m[0],m[3],m[6],m[1],m[4],m[7],m[2],m[5],m[8]],
+  det=m=>m[0]*(m[4]*m[8]-m[5]*m[7])-m[1]*(m[3]*m[8]-m[5]*m[6])+m[2]*(m[3]*m[7]-m[4]*m[6]),
+  I3=[1,0,0,0,1,0,0,0,1],
+  // the turn by t about the unit axis a; the mirror across the plane whose normal is n
+  turn=(a,t)=>{const c=cos(t),s=sin(t),C=1-c,[x,y,z]=a;
+    return[c+x*x*C,x*y*C-z*s,x*z*C+y*s,y*x*C+z*s,c+y*y*C,y*z*C-x*s,z*x*C-y*s,z*y*C+x*s,c+z*z*C]},
+  mirror=n=>{const[x,y,z]=n;return[1-2*x*x,-2*x*y,-2*x*z,-2*y*x,1-2*y*y,-2*y*z,-2*z*x,-2*z*y,1-2*z*z]},
+  // a unit vector across a
+  across=a=>unit(cross(a,abs(a[0])<.9?[1,0,0]:[0,1,0]));
+
+// The world holds at most one of each. Down and forward are arrows; a spin turns one way
+// about its axis; a stretch pulls both ways along its axis. An orthogonal g keeps a
+// direction by its kind's law: an arrow, g v = v; a spin, det(g) g v = v; a stretch,
+// g v = v or -v.
+const KIND={down:0,forward:0,spin:1,stretch:2},EPS=1e-7,
+  keeps=(g,k,v)=>{const w=mv(g,v);return k==1?len(sub(mul(w,det(g)),v))<EPS:len(sub(w,v))<EPS||k==2&&len(add(w,v))<EPS};
+
+// Each direction lies along, against or across those before it when it is within a degree
+// of doing so; across two at once, across both.
+const SNAP=P/180,
+  snap=W=>{const out={},seen=[];
+    for(const k in KIND){if(!W[k])continue;let v=unit(W[k]),along=null;const b=[];
+      for(const e of seen){const c=dot(v,e);
+        if(abs(c)>cos(SNAP))along=mul(e,c>0?1:-1);
+        else if(abs(c)<sin(SNAP)){let u=e;for(const q of b)u=sub(u,mul(q,dot(u,q)));if(len(u)>EPS)b.push(unit(u))}}
+      if(along)v=along;else if(b.length){for(const q of b)v=sub(v,mul(q,dot(v,q)));v=unit(v)}
+      out[k]=v;seen.push(v)}
+    return out};
+// With a foundling shown, a direction within 6 degrees of one the foundling keeps by its
+// kind's law is then set on it. An arrow or a spin goes onto what the foundling's group
+// leaves fixed: the law averaged over the group projects there, and the projection's
+// length is the angle's cosine. A stretch goes onto an axis the group keeps either way
+// round: its tensor averaged over the group, iterated from it, and checked by the law.
+// A turned foundling keeps what its shape lets a world give it: any direction along its
+// axis (a spin there makes the same shape as a stretch), but an arrow only where its poles
+// differ.
+const NEAR=6*P/180,
+  keptBy=(G,k,v)=>G.name.includes("inf")?len(cross(v,G.axis))<1e-6&&(KIND[k]>0||shapeOf(G)=="Cinfv"):G.els.every(g=>keeps(g,KIND[k],v)),
+  snapTo=(W,G)=>{const out={},N=G.els.length,round=G.name.includes("inf");
+    for(const k in W){let v=W[k];const kd=KIND[k];
+      if(round){const c=dot(v,G.axis);if(abs(c)>cos(NEAR)&&(kd>0||shapeOf(G)=="Cinfv"))v=mul(G.axis,c<0?-1:1)}
+      else if(kd<2){let p=[0,0,0];for(const g of G.els)p=add(p,mul(mv(g,v),kd&&det(g)<0?-1:1));p=mul(p,1/N);
+        if(len(p)>cos(NEAR))v=unit(p)}
+      else{const gv=G.els.map(g=>mv(g,v));let u=v;
+        for(let i=0;i<30;i++){let w=[0,0,0];for(const q of gv)w=add(w,mul(q,dot(q,u)));u=unit(w)}
+        if(abs(dot(u,v))>cos(NEAR)&&G.els.every(g=>keeps(g,2,u)))v=dot(u,v)<0?mul(u,-1):u}
+      out[k]=v}
+    return out};
+
+// The world's group: every orthogonal g that keeps each direction by its law. With every
+// direction on one axis it is infinite, and named. Otherwise g keeps two different lines,
+// so it is +1 or -1 on each of a, v and m below; of those eight, the ones that keep all.
+const named=els=>{const n=els.length,inv=els.some(g=>g[0]+g[4]+g[8]<-2.5),imp=els.some(g=>det(g)<0);
+    return n==1?"C1":n==2?inv?"Ci":imp?"Cs":"C2":n==4?inv?"C2h":imp?"C2v":"D2":"D2h"},
+  group=W=>{const L=Object.keys(W).map(k=>[KIND[k],W[k]]);
+    if(!L.length)return{type:"Kh",name:"Kh"};
+    const a=L[0][1],o=L.find(([,v])=>len(cross(v,a))>EPS);
+    if(!o){const k=new Set(L.map(([k])=>k)),t=k.has(0)?k.has(1)?"Cinf":"Cinfv":k.has(1)?"Cinfh":"Dinfh";
+      return{type:t,name:t,axis:a}}
+    const m=unit(cross(a,o[1])),v=cross(m,a),els=[];
+    for(let s=0;s<8;s++){const d=[s&1?-1:1,s&2?-1:1,s&4?-1:1],g=[];
+      for(let i=0;i<3;i++)for(let j=0;j<3;j++)g.push(d[0]*a[i]*a[j]+d[1]*v[i]*v[j]+d[2]*m[i]*m[j]);
+      if(L.every(([k,x])=>keeps(g,k,x)))els.push(g)}
+    return{type:"finite",name:named(els),els}};
+
+// Where the world leaves a circle the body takes n of it, at an azimuth of its own;
+// turned, it takes 360, a degree apart. With nothing given, 3 takes a tetrahedron's group,
+// 4 a cube's, 5 an icosahedron's, 2 and 6 an axis of its own with D2h or D6h about it, and
+// turned the body is a ball.
+const TURN=360,
+  about=(a,e,N,kind)=>{const R=[],V=[];
+    for(let k=0;k<N;k++){R.push(turn(a,2*P*k/N));V.push(mirror(cross(a,mv(turn(a,P*k/N),e))))}
+    let G=kind=="C"||kind=="Ch"?R:R.concat(V);
+    if(kind=="Ch"||kind=="Dh"){const h=mirror(a);G=G.concat(G.map(g=>mm(h,g)))}
+    return G},
+  closure=gens=>{const key=g=>g.map(x=>Math.round(x*1e6)).join(),seen=new Map([[key(I3),I3]]),q=[I3];
+    while(q.length){const g=q.pop();for(const h of gens){const p=mm(h,g),k=key(p);if(!seen.has(k)){seen.set(k,p);q.push(p)}}}
+    return[...seen.values()]},
+  PHI=(1+sqrt(5))/2,CYC=[0,1,0,0,0,1,1,0,0],SWAP=[0,1,0,1,0,0,0,0,1],HALF=[-1,0,0,0,-1,0,0,0,1],
+  POLY={3:closure([CYC,SWAP,HALF]),4:closure([CYC,SWAP,[-1,0,0,0,1,0,0,0,1]]),
+    5:closure([CYC,HALF,turn(unit([0,1,PHI]),2*P/5),[-1,0,0,0,-1,0,0,0,-1]])},
+  takes=(st,n,F)=>{
+    if(st.type=="finite")return st;
+    if(st.type=="Kh"){if(n==Infinity)return{name:"Kh",ball:1};
+      if(n==6||n==2)return{name:"D"+n+"h",els:about(mv(F,[0,0,1]),mv(F,[1,0,0]),n,"Dh"),axis:mv(F,[0,0,1]),azimuth:mv(F,[1,0,0])};
+      return{name:{3:"Td",4:"Oh",5:"Ih"}[n],els:POLY[n].map(g=>mm(mm(F,g),tr(F)))}}
+    const a=st.axis,f=mv(F,[1,0,0]),p=sub(f,mul(a,dot(a,f))),e=len(p)>EPS?unit(p):across(a),
+      kind={Cinf:"C",Cinfv:"Cv",Cinfh:"Ch",Dinfh:"Dh"}[st.type],N=n==Infinity?TURN:n,m=n==Infinity?"inf":n;
+    return{name:(kind[0]=="D"?"D":"C")+m+kind.slice(1).replace("D",""),els:about(a,e,N,kind),axis:a,azimuth:e}};
+
+// Its form: a plain solid whose own symmetry is exactly the body's group, after Haeckel's
+// Grundformen (Generelle Morphologie, 1866): a pyramid where an arrow runs along the axis,
+// a double pyramid where none does, the regular solids where nothing is given, a
+// three-sided pyramid on an isosceles triangle for the one mirror (its base at the forward
+// end, the belly an edge, the back a face), and an irregular tetrahedron when nothing is
+// left. Where the body has turns and no mirror he has no form; there, a ratchet's.
+// Corners in units of the body's reach r, and the edges between them; or, for a turned
+// body, which has no flat face, his two forms without one about its axis: the egg where
+// its poles differ, the spheroid where they agree; and for the ball a ball.
+const colOf=(g,s)=>{let b=[0,0,0];for(let j=0;j<3;j++){const c=[(j==0)+s*g[j],(j==1)+s*g[3+j],(j==2)+s*g[6+j]];if(len(c)>len(b))b=c}return unit(b)},
+  ringOf=(a,e,n,r,z,t)=>Array.from({length:n},(_,k)=>add(mul(a,z),mul(mv(turn(a,2*P*k/n+(t||0)),e),r))),
+  loop=(o,n)=>Array.from({length:n},(_,k)=>[o+k,o+(k+1)%n]),
+  closest=V=>{let m=1e9;const E=[];V.forEach((p,i)=>V.forEach((q,j)=>{if(j>i)m=min(m,len(sub(p,q)))}));
+    V.forEach((p,i)=>V.forEach((q,j)=>{if(j>i&&len(sub(p,q))<m*1.001)E.push([i,j])}));return E},
+  signs=f=>[0,1,2,3,4,5,6,7].map(s=>f(s&1?-1:1,s&2?-1:1,s&4?-1:1)),
+  // With a foundling (canon), a form is drawn from its group alone, in the body's own frame:
+  // an axis signed toward the frame's third, an azimuth along its first, a lone mirror's
+  // sign by the frame's second; a group with one half-turn's axis (C2v, C2h) as that
+  // axis's form at two parts, however the group came; a ratchet's twist one way, for the
+  // group alone has no hand. Then equal groups draw one form.
+  form=(st,G,dirs,F,r,canon)=>{
+    if(G.ball)return{round:"ball",r};
+    const nm=G.name,fit=(V,E)=>({V:V.map(v=>mul(v,r)),E}),fx=mv(F,[1,0,0]),fy=mv(F,[0,1,0]),fz=mv(F,[0,0,1]),
+      flat=(a,v)=>{const p=sub(v,mul(a,dot(a,v)));return len(p)>1e-6?unit(p):across(a)},t3=g=>g[0]+g[4]+g[8];
+    if(canon){dirs={};
+      if(!G.axis&&(nm=="C2v"||nm=="C2h")){const a=colOf(G.els.find(g=>det(g)>0&&t3(g)<0),1);
+        G={name:nm,axis:a,azimuth:nm=="C2v"?G.els.filter(g=>det(g)<0&&t3(g)>0).map(g=>colOf(g,-1)).reduce((p,q)=>abs(dot(p,fx))>=abs(dot(q,fx))?p:q):flat(a,fx)}}
+      if(G.axis&&dot(G.axis,fz)<0)G={...G,axis:mul(G.axis,-1)}}
+    if(G.axis){const a=G.axis,e=G.azimuth,m=/^(C|D)(\d+|inf)(v|h)?$/.exec(nm),n=+m[2],k=m[1]+(m[3]||"");
+      if(m[2]=="inf")return{round:k=="C"||k=="Cv"?"egg":"spheroid",a,r};
+      // at two parts the base is a rhombus, long across the parts' mirror
+      const base=(r,z)=>n>2?ringOf(a,e,n,r,z):[0,1,2,3].map(j=>add(mul(a,z),mul(mv(turn(a,P*j/2),e),j%2?.55*r:r))),c=n>2?n:4;
+      if(k=="Cv")return fit([mul(a,-.9),...base(.9,.5)],[...loop(1,c),...loop(1,c).map(([i])=>[0,i])]);
+      if(k=="Dh")return fit([mul(a,1.15),mul(a,-1.15),...base(.8,0)],[...loop(2,c),...loop(2,c).flatMap(([i])=>[[0,i],[1,i]])]);
+      const tw=(dirs.spin&&dot(dirs.spin,a)<0?-1:1)*P/n*.4,rat=z=>[...ringOf(a,e,n,.9,z),...ringOf(a,e,n,.5,z,tw)],
+        saw=o=>loop(o,n).flatMap(([i,j])=>[[i,i+n],[i+n,j]]);
+      if(k=="C")return fit([mul(a,-.9),...rat(.5)],[...saw(1),...loop(1,n).map(([i])=>[0,i])]);
+      return fit([...rat(.5),...rat(-.5)],[...saw(0),...saw(2*n),...Array.from({length:2*n},(_,i)=>[i,i+2*n])])}
+    if(st.type=="Kh"){const V=(nm=="Td"?[[1,1,1],[1,-1,-1],[-1,1,-1],[-1,-1,1]]:nm=="Oh"?signs((a,b,c)=>[a,b,c]):
+        signs((a,b)=>[0,a,b*PHI]).slice(0,4).flatMap(v=>[v,[v[2],v[0],v[1]],[v[1],v[2],v[0]]])).map(v=>mv(F,mul(unit(v),nm=="Td"?1.5:1.25)));
+      return fit(V,closest(V))}
+    const mir=G.els.filter(g=>det(g)<0&&t3(g)>0).map(g=>colOf(g,-1)),c2=G.els.filter(g=>det(g)>0&&t3(g)<0).map(g=>colOf(g,1));
+    if(nm=="C1")return fit([[.9,.1,-.5],[-.7,.6,-.4],[-.2,-.8,-.3],[.1,.15,.8]],[[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]]);
+    if(nm=="Ci"){const V=signs((a,b,c)=>[.5*a+.12*b-.06*c,.06*a+.36*b+.15*c,.1*a-.06*b+.42*c]);
+      return fit(V,V.flatMap((_,i)=>[1,2,4].filter(b=>!(i&b)).map(b=>[i,i|b])))}
+    if(nm=="Cs"){const nr=canon&&dot(mir[0],fy)<0?mul(mir[0],-1):mir[0];let u=null,w=null;
+      for(const k of["forward","down","stretch","spin"])if(dirs[k]&&!u){const p=sub(dirs[k],mul(nr,dot(nr,dirs[k])));if(len(p)>.5)u=unit(p)}
+      u=u||(canon?flat(nr,fx):across(nr));
+      if(dirs.down){const d=mul(dirs.down,-1),p=sub(sub(d,mul(nr,dot(nr,d))),mul(u,dot(u,d)));if(len(p)>1e-3)w=unit(p)}
+      w=w||cross(nr,u);const b=mul(u,.6);
+      return fit([mul(u,-.9),sub(b,mul(w,.5)),add(add(b,mul(w,.35)),mul(nr,.5)),sub(add(b,mul(w,.35)),mul(nr,.5))],[[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]])}
+    if(nm=="C2v"){let ax=c2[0],[n1,n2]=mir;for(const k of["down","forward"])if(dirs[k]&&abs(dot(dirs[k],ax))>.999)ax=dirs[k];
+      if(dirs.stretch&&abs(dot(dirs.stretch,n2))>.9)[n1,n2]=[n2,n1];const b=mul(ax,.5);
+      return fit([mul(ax,-.9),add(b,mul(n1,.9)),add(b,mul(n2,.495)),sub(b,mul(n1,.9)),sub(b,mul(n2,.495))],[...loop(1,4),[0,1],[0,2],[0,3],[0,4]])}
+    if(nm=="C2h"){const ax=c2[0];let u=across(ax);
+      if(dirs.stretch){const p=sub(dirs.stretch,mul(ax,dot(ax,dirs.stretch)));if(len(p)>.5)u=unit(p)}
+      const w=cross(ax,u),p=mul(u,.8),q=add(mul(u,.3),mul(w,.5)),R4=[add(p,q),sub(p,q),mul(add(p,q),-1),sub(q,p)],h=mul(ax,.6);
+      return fit([...R4.map(v=>add(v,h)),...R4.map(v=>sub(v,h))],[...loop(0,4),...loop(4,4),[0,4],[1,5],[2,6],[3,7]])}
+    return null};
+
+// A fragment: a lopsided core holding the middle, two to four limbs, and up to two small
+// lumps or fins, drawn from a generator of its own, so that a seed is a body. Each part is
+// an ellipsoid (k 0: centre, turn, semi-axes) or a round cone (k 1: two ends, a radius at
+// each, a ball at each swept from one to the other). The
+// core is never nearly round: each of its semi-axes is at least a quarter longer than
+// the next. A nearly round core, carrying most of the volume, made a body look more
+// symmetric than its world (one in 7,100, in the harness).
+const gen=s=>()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296},
+  // a turn drawn uniformly from all turns (Shoemake's)
+  anyturn=r=>{const u=r(),v=2*P*r(),w=2*P*r(),a=sqrt(1-u),b=sqrt(u),x=a*sin(v),y=a*cos(v),z=b*sin(w),q=b*cos(w);
+    return[1-2*(y*y+z*z),2*(x*y-z*q),2*(x*z+y*q),2*(x*y+z*q),1-2*(x*x+z*z),2*(y*z-x*q),2*(x*z-y*q),2*(y*z+x*q),1-2*(x*x+y*y)]},
+  seed=s=>{const r=gen(s),u=(a,b)=>a+(b-a)*r(),dir=()=>mv(anyturn(r),[0,0,1]),parts=[];
+    // the core drawn out: each semi-axis the one above it over 1.25 to 2
+    const top=u(.3,.55),mid=top/u(1.25,2),ax=[mid/u(1.25,2),mid,top];
+    // one piece: every part after the core has its anchor inside a part before it (a
+    // limb's first segment in the core, each later one at the tip of the one before, a
+    // lump on a tip or the core's surface); the core holds the middle, so every copy meets
+    // every other; but never centred on it, which would make the body nearly symmetric
+    // through its middle once a big group keeps only the core and a limb (ledger, W2l)
+    const c=mul(dir(),u(1/3,.8)*ax[0]),Rc=anyturn(r),inCore=f=>{const e=dir();return add(c,mv(Rc,e.map((v,i)=>v*ax[i]*f)))};
+    parts.push({k:0,c,R:Rc,ax,limb:0});
+    // each limb a chain of round cones: an arm of three or four that bends one way as it
+    // narrows, or, one time in four, a spine, straight, to a near point; each part keeps
+    // its limb's number (the core 0)
+    for(let i=2+(r()*3|0),L=1;i--;L++){let a=inCore(u(.3,.8)),d=unit(add(unit(sub(a,c)),mul(dir(),u(0,.7))));
+      if(r()<.75){const m=3+(r()*2|0),step=u(.35,.7)/m,bx=cross(d,dir()),bend=len(bx)>1e-6?unit(bx):across(d),beta=u(-.45,.45),r0=u(.04,.08),rt=r0*u(.15,.35);
+        for(let j=0;j<m;j++){const b=add(a,mul(d,step));parts.push({k:1,p:[a,b],r:r0+(rt-r0)*j/m,r2:r0+(rt-r0)*(j+1)/m,limb:L});a=b;d=mv(turn(bend,beta),d)}}
+      else parts.push({k:1,p:[a,add(a,mul(d,u(.25,.45)))],r:u(.025,.05),r2:.006,limb:L})}
+    // each lump, as often as not, a fin, a blade; else a pod, drawn out as the core is; it
+    // takes the number of the part it sits on
+    const pod=()=>{const t=u(.1,.2),m=t/u(1.25,2);return[m/u(1.25,2),m,t]};
+    for(let i=r()*3|0;i--;){const j=r()*parts.length|0,fin=r()<.5,tip=j&&parts[j].k==1;
+      parts.push({k:0,c:tip?parts[j].p[1]:inCore(.95),R:anyturn(r),ax:fin?[u(.12,.24),u(.06,.13),u(.012,.03)]:pod(),limb:tip?parts[j].limb:0})}
+    return{parts,frame:anyturn(r)}},
+  // how far from the middle a part reaches: a limb at one of its end balls; an ellipsoid where
+  // |c + R D y| is greatest over unit y, the root of sum b_i^2/(d_i^2 - l)^2 = 1 with
+  // b = D R^T c and l above every d_i^2
+  far=q=>{if(q.k==1)return max(len(q.p[0])+q.r,len(q.p[1])+q.r2);
+    const d=q.ax,b=mv(tr(q.R),q.c).map((x,i)=>x*d[i]),D=d.map(x=>x*x),top=max(...D),
+      g=l=>b.reduce((s,x,i)=>s+x*x/((D[i]-l)*(D[i]-l)),0);
+    let lo=top,hi=top+1+len(b);if(g(hi)>1)hi*=4;
+    for(let i=0;i<200;i++){const l=(lo+hi)/2;if(g(l)>1)lo=l;else hi=l}
+    const l=hi,y=b.map((x,i)=>-x/(D[i]-l)),n=len(y),w=y.map(x=>x/n);
+    return len(add(q.c,mv(q.R,w.map((x,i)=>x*d[i]))))},
+  // g acting on a part
+  act=(g,q)=>q.k==0?{k:0,c:mv(g,q.c),R:mm(g,q.R),ax:q.ax,limb:q.limb}:{k:1,p:q.p.map(x=>mv(g,x)),r:q.r,r2:q.r2,limb:q.limb},
+  // what of the fragment is copied: every limb where the group has at most 6 elements,
+  // the first two where it has up to 20, the first alone beyond (and turned); a lump goes
+  // with the part it sits on
+  kept=(parts,G)=>{const N=G.ball||!G.els?1:G.els.length,L=N<=6?9:N<=20?2:1;return parts.filter(q=>q.limb<=L)},
+  // the body: every copy of what is kept of the fragment under the group it takes, or a ball
+  body=(S,G)=>G.ball?[{k:2,r:max(...S.parts.map(far))}]:(K=>G.els.flatMap(g=>K.map(q=>act(g,q))))(kept(S.parts,G));
+
+// The bestiary (W2n): beasts as the bestiaries drew them, mixed in among the bodies. Each
+// is of a body's own parts, in a frame of its own (x its head's way, y its left, z up):
+// those off its midline are given on its left and mirrored, those on it are themselves
+// mirror-symmetric, and its eyes are its own, each with the way it faces. So each keeps one
+// mirror, and comes only into a world that leaves one.
+// The elephant, after the Rochester Bestiary (British Library, Royal MS 12 F XIII, f. 11v):
+// legs straight, for it has no joints in its knees (the Physiologus); its trunk ending in a
+// trumpet's bell; its tusks up out of its mouth; and on its back, on a cloth, the wooden
+// tower from which, the bestiary says, the Persians and Indians fight: square, of logs
+// between corner posts.
+// The hedgehog, after the Aberdeen Bestiary (MS 24, f. 24r): pig-like, with a long open
+// snout and thin bent legs, a few spines, and the grapes it rolled on in a row along its
+// back, on its mirror.
+const MIRROR=[1,0,0,0,-1,0,0,0,1],rotY=t=>turn([0,1,0],t*P/180),rotX=t=>turn([1,0,0],t*P/180),rotZ=t=>turn([0,0,1],t*P/180),
+  limbOf=(a,b,r,r2,o)=>({k:1,p:[a,b],r,r2,...o}),egg=(c,ax,R=I3,o)=>({k:0,c,R,ax,...o}),
+  beast=(name,s,eyeR,mid,side,eyes)=>{const sc=q=>q.k?{...q,p:q.p.map(x=>mul(x,s)),r:q.r*s,r2:q.r2*s}:{...q,c:mul(q.c,s),ax:q.ax.map(v=>v*s)},
+      L=side.map(sc);
+    return{name,eyeR:eyeR*s,parts:[...mid.map(sc),...L,...L.map(q=>({...q,...act(MIRROR,q)}))],
+      eyes:eyes.flatMap(([p,f])=>[[mul(p,s),unit(f)],[mv(MIRROR,mul(p,s)),mv(MIRROR,unit(f))]])}},
+  // the hedgehog's dome (centre -0.02 along it; semi-axes 0.34 long, 0.21 across, 0.17
+  // high: wider than it is tall), its ridge's height, and its spines: set on the dome where
+  // a direction at elevation e and azimuth a meets it, along the dome's outward normal tipped
+  // back toward the tail, in four rings over the flank and back and along the midline,
+  // those off it given on the left and mirrored
+  hedgeTop=x=>.17*sqrt(max(0,1-(x+.02)*(x+.02)/(.34*.34))),
+  hedgeSpines=(()=>{const c=[-.02,0,0],A=.34,B=.21,C=.17,mid=[],side=[],
+      put=(e,a,list)=>{e*=P/180;a*=P/180;const d=[cos(e)*cos(a),cos(e)*sin(a),sin(e)],k=1/sqrt((d[0]/A)**2+(d[1]/B)**2+(d[2]/C)**2),
+        s=d.map(v=>v*k),t=unit(add(unit([s[0]/(A*A),s[1]/(B*B),s[2]/(C*C)]),[-.8,0,0])),b=add(c,mul(s,.9));
+        list.push({k:1,p:[b,add(b,mul(t,.12))],r:.01,r2:.002})};
+    // eight rings, each with spines as many as its round is long, from the shoulder to the tail
+    for(const e of[6,17,28,39,50,61,72,83]){const m=max(2,Math.round(13*cos(e*P/180)));for(let i=0;i<m;i++)put(e,30+150*(i+.5)/m,side)}
+    for(const e of[16,34,52,70])put(e,180,mid);
+    return{mid,side}})(),
+  BEASTS=[
+    beast("an elephant",1,.034,[
+      egg([0,0,.02],[.4,.2,.19]),egg([.43,0,.03],[.15,.13,.15],rotY(20),{head:1}),
+      limbOf([.55,0,-.02],[.65,0,-.12],.06,.052),limbOf([.65,0,-.12],[.69,0,-.25],.052,.042),limbOf([.69,0,-.25],[.68,0,-.33],.042,.036),
+      limbOf([.68,0,-.33],[.665,0,-.4],.036,.075),
+      limbOf([-.38,0,.06],[-.45,0,-.05],.02,.014),limbOf([-.45,0,-.05],[-.465,0,-.18],.014,.008),egg([-.465,0,-.2],[.02,.02,.035]),
+      egg([-.03,0,.17],[.2,.215,.05]),
+      ...[.25,.31,.37,.43].flatMap(z=>[limbOf([.1,-.13,z],[.1,.13,z],.03,.03),limbOf([-.16,-.13,z],[-.16,.13,z],.03,.03)]),
+      limbOf([.1,0,.46],[.1,0,.54],.03,.03),limbOf([-.16,0,.46],[-.16,0,.54],.03,.03)],[
+      egg([.36,.13,.1],[.06,.016,.09],mm(rotZ(25),rotX(-15))),
+      limbOf([.52,.065,-.05],[.6,.095,-.11],.024,.02),limbOf([.6,.095,-.11],[.68,.105,-.1],.02,.014),limbOf([.68,.105,-.1],[.73,.11,-.03],.014,.006),
+      limbOf([.25,.12,-.05],[.27,.12,-.43],.07,.078,{leg:1}),limbOf([-.25,.12,-.05],[-.27,.12,-.43],.075,.082,{leg:1}),
+      ...[.25,.31,.37,.43].map(z=>limbOf([-.16,.13,z],[.1,.13,z],.03,.03)),
+      limbOf([.1,.13,.2],[.1,.13,.56],.035,.035),limbOf([-.16,.13,.2],[-.16,.13,.56],.035,.035),limbOf([-.03,.13,.46],[-.03,.13,.54],.03,.03)],
+      [[[.5,.105,.1],[.35,1,.25]]]),
+    beast("a hedgehog",1.4,.02,[
+      egg([-.02,0,0],[.34,.21,.17]),limbOf([.24,0,-.03],[.47,0,-.08],.1,.022,{head:1}),limbOf([.33,0,-.08],[.45,0,-.11],.03,.012),
+      egg([.475,0,-.082],[.02,.02,.018]),limbOf([-.33,0,0],[-.4,0,-.04],.03,.012),
+      ...[-.2,-.08,.04,.15].map(x=>egg([x,0,hedgeTop(x)+.035],[.04,.04,.04])),...hedgeSpines.mid],[
+      egg([.24,.1,.08],[.022,.01,.032],rotX(-25)),
+      limbOf([.16,.11,-.08],[.18,.12,-.19],.035,.028,{leg:1}),limbOf([.18,.12,-.19],[.23,.12,-.21],.022,.009,{leg:1}),
+      limbOf([-.18,.11,-.07],[-.2,.12,-.19],.04,.03,{leg:1}),limbOf([-.2,.12,-.19],[-.15,.12,-.21],.022,.009,{leg:1}),
+      ...hedgeSpines.side],
+      [[[.3,.06,.02],[.5,1,.35]]])],
+  // A beast is set by its world: its left along the normal of the group's one mirror, its
+  // up against down where down is given, its head forward's way along the mirror where
+  // forward is given, else up x left's other way; without down, its up is head x left,
+  // the left signed so that up leans to the page's up. The frame's columns are head, left, up.
+  beastQ=(G,d)=>{const m=G.els.find(g=>det(g)<0),
+      y0=unit([0,1,2].map(j=>[I3[j]-m[j],I3[3+j]-m[3+j],I3[6+j]-m[6+j]]).reduce((a,b)=>len(a)>len(b)?a:b)),
+      inP=v=>sub(v,mul(y0,dot(v,y0)));let x,y,z;
+    if(d.down){z=unit(inP(mul(d.down,-1)));const f=d.forward?sub(inP(d.forward),mul(z,dot(d.forward,z))):null;
+      x=f&&len(f)>1e-6?unit(f):cross(y0,z);y=cross(z,x)}
+    else{x=d.forward?unit(inP(d.forward)):unit(cross(y0,len(cross(y0,[0,0,1]))>1e-6?[0,0,1]:[1,0,0]));y=y0;
+      if(dot(cross(x,y),[0,0,1])<0)y=mul(y,-1);z=cross(x,y)}
+    return[x[0],y[0],z[0],x[1],y[1],z[1],x[2],y[2],z[2]]},
+  placeBeast=(B,Q)=>B.parts.map(q=>{const o={...q,...act(Q,q)};delete o.bb;return o});
+
+// A part seen along a view whose right and up are the unit X and Y: an ellipse (centre,
+// semi-axes, tilt), a limb's two ends and their radii, or a disc. An ellipsoid's shadow is
+// exactly the ellipse whose 2 by 2 shape is [X Y]^T R D^2 R^T [X Y].
+const shadow=(q,X,Y)=>{if(q.k==2)return{k:2,x:0,y:0,r:q.r};
+  if(q.k==1)return{k:1,a:[dot(X,q.p[0]),dot(Y,q.p[0])],b:[dot(X,q.p[1]),dot(Y,q.p[1])],r:q.r,r2:q.r2};
+  const x=mv(tr(q.R),X),y=mv(tr(q.R),Y),s=q.ax.map(v=>v*v),
+    a=x[0]*x[0]*s[0]+x[1]*x[1]*s[1]+x[2]*x[2]*s[2],b=x[0]*y[0]*s[0]+x[1]*y[1]*s[1]+x[2]*y[2]*s[2],
+    d=y[0]*y[0]*s[0]+y[1]*y[1]*s[1]+y[2]*y[2]*s[2],h=sqrt((a-d)*(a-d)/4+b*b),m=(a+d)/2;
+  return{k:0,x:dot(X,q.c),y:dot(Y,q.c),rx:sqrt(m+h),ry:sqrt(max(m-h,0)),t:atan2(2*b,a-d)/2}};
+
+// ---- the page: one body in one world, from above and from two sides ----
+const{pow,round,random}=Math,$=i=>document.getElementById(i),c=$("c"),x=c.getContext("2d"),
+  calm=matchMedia("(prefers-reduced-motion: reduce)").matches,col={},
+  // the glazes, a family at a time, turned by the dot: the ground the first glaze's wash,
+  // the marks (the directions, the buttons) the second, the body the third
+  FAMS=[["celadon",["qingbai","ru","longquan"]],["jun",["crimson","junsplash","jun"]],["tenmoku",["gold","amber","rust"]]];
+let fi=1;
+
+// House colours come from the tokens (oklch); the canvas wants rgb. A missing token falls
+// back to the page's own ink or paper.
+function rgb(s){const m=/oklch\(([\d.]+)(%?)\s+([\d.]+)\s+([\d.]+)/.exec(s);if(!m)return s;
+  const L=m[1]*(m[2]?.01:1),ch=+m[3],h=m[4]*P/180,a=ch*cos(h),b=ch*sin(h),
+    l=pow(L+.3963377774*a+.2158037573*b,3),q=pow(L-.1055613458*a-.0638541728*b,3),s3=pow(L-.0894841775*a-1.291485548*b,3);
+  return"rgb("+[4.0767416621*l-3.3077115913*q+.2309699292*s3,-1.2684380046*l+2.6097574011*q-.3413193965*s3,-.0041960863*l-.7034186147*q+1.707614701*s3]
+    .map(v=>round(max(0,min(1,v<=.0031308?12.92*v:1.055*pow(v,1/2.4)-.055))*255))+")"}
+function colours(){const cs=getComputedStyle(document.documentElement),bs=getComputedStyle(document.body),F=FAMS[fi][1];
+  for(const[t,k]of[["ink","ink"],["paper","paper"],["rule","rule"],["base",F[1]+"-base"],["accent",F[1]+"-accent"],["body",F[2]+"-base"]]){
+    let v=rgb(cs.getPropertyValue("--"+k));if(!/\d/.test(v))v=rgb(t=="paper"?bs.backgroundColor:bs.color);col[t]=v}
+  // the body's glaze, its chroma and hue, for the wash laid on it; an eye's white is Ding's
+  const m=/oklch\(([\d.]+)\s+([\d.]+)\s+([\d.]+)/.exec(cs.getPropertyValue("--"+F[2]+"-base"))||[0,.5,0,0];
+  const d=/([\d.]+)\s+([\d.]+)/.exec(cs.getPropertyValue("--ding"))||[0,0,0];col.gloss=unit3(rgb("oklch(.97 "+d[1]+" "+d[2]+")"));
+  const j=/([\d.]+)\s+([\d.]+)/.exec(cs.getPropertyValue("--jian"))||[0,0,0];col.pupil=unit3(rgb("oklch(.2 "+j[1]+" "+j[2]+")"));
+  // an eye set on an axis wears the axis's glaze: two-fold gold, three Longquan, four Jun
+  // splash, five crimson, six Jun blue
+  col.per=["gold","longquan","junsplash","crimson","jun"].flatMap(k=>unit3(rgb(cs.getPropertyValue("--"+k+"-accent"))));
+  // engraved: the ink's lines, and a wash of the body's glaze laid at the paper's
+  // lightness, a shade toward the ink, at three fifths of its chroma; behind each view the
+  // paper, as behind a hand-coloured plate's figure
+  const w=/oklch\(([\d.]+)/.exec(cs.getPropertyValue("--paper")),Lw=w?+w[1]:.9;
+  col.inkv=unit3(col.ink);col.tint=unit3(rgb("oklch("+(Lw>.5?Lw-.05:Lw+.06)+" "+m[2]*.6+" "+m[3]+")"));
+  col.font="11px "+cs.getPropertyValue("--typewriter")}
+
+// The world as held, each direction where it was last put, on or off; the world as it
+// is, snapped; the body's parts and its fragment, turned as the visitor turned it.
+const raw={down:[0,0,-1],forward:[1,0,0],spin:[0,1,0],stretch:[0,0,1]},on={down:1,forward:1,spin:0,stretch:0};
+let n=5,S=seed(random()*4294967296>>>0),pose=I3,now,spun=0,shaped=0;
+const turned=()=>gl&&now.G.axis&&now.G.name.includes("inf");
+// Its eyes. The fragment carries one: the point where a ray toward the middle, along a
+// direction kept with the world, first meets the body. The body has that point's images
+// under its group, images that fall together counted once: as many eyes as the group has
+// elements, over as many as leave the eye where it is. A direction within 4 degrees of
+// one that some of the group keeps is set on it. A turned body and the ball have none.
+// How far x lies from a part: exactly, for a limb (a round cone: from a, radius r, to b,
+// radius r2; Quilez's distance); for an ellipsoid its own measure scaled by its least
+// semi-axis, never more than the distance.
+const cone=(q,x)=>{const a=q.p[0],ba=sub(q.p[1],a),l2=dot(ba,ba),rr=q.r-q.r2,a2=l2-rr*rr,il2=1/l2,pa=sub(x,a),y=dot(pa,ba),z=y-l2,
+    w=sub(mul(pa,l2),mul(ba,y)),x2=dot(w,w),y2=y*y*l2,z2=z*z*l2,k=Math.sign(rr)*rr*rr*x2;
+    if(Math.sign(z)*a2*z2>k)return sqrt(x2+z2)*il2-q.r2;
+    if(Math.sign(y)*a2*y2<k)return sqrt(x2+y2)*il2-q.r;
+    return(sqrt(x2*a2*il2)+y*rr)*il2-q.r},
+  // a limb's radius where x lies along it
+  limbR=(q,x)=>{const ba=sub(q.p[1],q.p[0]),t=min(1,max(0,dot(sub(x,q.p[0]),ba)/dot(ba,ba)));return q.r+(q.r2-q.r)*t},
+  partDist=(q,x)=>{if(q.k==1)return cone(q,x);
+    const v=mv(tr(q.R),sub(x,q.c));return(Math.hypot(v[0]/q.ax[0],v[1]/q.ax[1],v[2]/q.ax[2])-1)*min(...q.ax)},
+  // a part's bounding ball, kept on it: no point of the part is farther from its centre
+  bound=q=>q.bb||(q.bb=q.k==1?[mul(add(q.p[0],q.p[1]),.5),len(sub(q.p[0],q.p[1]))/2+max(q.r,q.r2)]:q.k==2?[[0,0,0],q.r]:[q.c,max(...q.ax)]),
+  // where a ray first meets the parts: walked by the distance to the nearest, a part whose
+  // ball lies farther than the nearest yet passed over (it can be no nearer than its ball)
+  hit=(o,d,parts)=>{let t=0;for(let i=0;i<400&&t<8;i++){const p=add(o,mul(d,t));let m=9;
+    for(const q of parts){const[c,b]=bound(q);if(len(sub(p,c))-b>=m)continue;const v=partDist(q,p);if(v<m)m=v}
+    if(m<1e-5)return p;t+=m}return null};
+let eyeDir=unit([.75,.4,.5]),gazeT=null;const EYE=.062;
+// On the ball every point is an image of every other: it is all eye. On a turned body an
+// eye off the axis has a whole circle of images, one eye all the way round; within 4
+// degrees of the axis it is set on it, one eye at the pole, and one at each pole where the
+// body is mirrored across its axis. An eye on an axis of the group has that axis's period
+// (how many turns leave it where it is), and wears it. While an eye is held the reach is
+// 10 degrees, and an eye set on an axis stays there when let go.
+function eyes(){const G=now.G,near=cos((grip&&grip.eye?10:4)*P/180);now.eyes=[];now.eyeN=null;now.ring=null;now.per=0;now.eyeR=EYE;now.all=G.ball?1:0;if(G.ball)return;
+  // a beast's eyes are its own, set where it was drawn with them
+  if(now.beast){const Q=now.beastQ;now.eyes=now.beast.eyes.map(e=>mv(Q,e[0]));now.eyeN=now.beast.eyes.map(e=>mv(Q,e[1]));now.eyeR=now.beast.eyeR;return}
+  if(G.name.includes("inf")){if(!turned())return;
+    const a=G.axis,f=now.rev||(now.rev=profile()),c=dot(eyeDir,a),h=/h$/.test(G.name),
+      at=(r,z)=>{const i=Math.floor(r/f.R*f.NR),j=Math.floor((z/f.R*.5+.5)*f.NZ);return i<0||j<0||i>=f.NR||j>=f.NZ?9:f.d[j*f.NR+i]};
+    const onAxis=abs(c)>near,s=sqrt(max(0,1-c*c));if(onAxis&&grip&&grip.eye)eyeDir=mul(a,Math.sign(c));let t=1.5*f.R;while(t>0&&at(onAxis?0:t*s,t*(onAxis?Math.sign(c):c))>0)t-=.003;
+    if(onAxis){now.eyes=[mul(a,t*Math.sign(c))];if(h)now.eyes.push(mul(a,-t*Math.sign(c)))}
+    else now.ring=[t*s,t*c,h?1:0,1];return}
+  const d=unit(G.els.filter(g=>dot(mv(g,eyeDir),eyeDir)>near).reduce((s,g)=>add(s,mv(g,eyeDir)),[0,0,0])),p=hit(mul(d,4),mul(d,-1),now.body);
+  if(grip&&grip.eye)eyeDir=d;
+  if(!p)return;
+  // no wider than the part it sits on: at most 0.85 of a limb's radius there, or of a lump's least semi-axis
+  let on=null,m=9;for(const q of now.body){const v=partDist(q,p);if(v<m){m=v;on=q}}
+  now.eyeR=min(EYE,.85*(on.k==1?limbR(on,p):min(...on.ax)));
+  for(const g of G.els){const q=mv(g,p);if(!now.eyes.some(e=>len(sub(e,q))<1e-4))now.eyes.push(q)}
+  const k=G.els.filter(g=>det(g)>0&&len(sub(mv(g,p),p))<1e-4).length;now.per=k>1&&k<7?k:0}
+// each eye a white ball set proud of the body, and a pupil on the side it looks: at the
+// pointer, within 55 degrees of straight out; straight out when the pointer is away
+function eyeParts(R){const out=[],ball=(c,r,t)=>({k:0,c,R:I3,ax:[r,r,r],tint:t});
+  if(now.all){const r=now.reach,g=unit(gazeT||[.3,.2,1]);return[ball([0,0,0],1.002*r,1),ball(mul(g,.62*r),.46*r,2)]}
+  const EYE=now.eyeR;for(let i=0;i<now.eyes.length;i++){let p=now.eyes[i],n=now.eyeN?now.eyeN[i]:unit(p);if(R){p=mv(R,p);n=mv(R,n)}const c=add(p,mul(n,.3*EYE));let g=n;
+    if(gazeT){g=unit(sub(gazeT,c));const k=dot(g,n);if(k<cos(55*P/180)){const t=sub(g,mul(n,k));g=len(t)>1e-6?add(mul(n,cos(55*P/180)),mul(unit(t),sin(55*P/180))):n}}
+    // the iris, where the eye wears a period, shows from the pupil's edge to near the rim
+    out.push(ball(c,EYE,1),ball(add(c,mul(g,.66*EYE)),.5*EYE,2));if(now.per)out.push(ball(add(c,mul(g,.25*EYE)),.9*EYE,1+now.per))}
+  return out}
+// what the drawing shows is what the group was found from
+const shown=()=>now.dirs;
+// The shape a group draws: a turned body keeps the mirrors a spin did not give. A world
+// places a foundling while it leaves exactly the foundling's shape: the same name, and the
+// same elements, which for a turned shape is the same axis.
+const shapeOf=G=>G.ball?"Kh":{Cinf:"Cinfv",Cinfh:"Dinfh"}[G.name]||G.name,
+  sameEls=(A,B)=>A.length==B.length&&A.every(g=>B.some(h=>g.every((x,i)=>abs(x-h[i])<1e-6))),
+  fits=(M,G)=>shapeOf(M)==shapeOf(G)&&(!!G.ball||(G.name.includes("inf")?len(cross(M.axis,G.axis))<1e-6:sameEls(M.els,G.els)));
+// A foundling (W2h): a body made in a world the page does not draw, with a lineage of its
+// own. Each direction is there with chance 1/2: along x, y or z of a frame of its own (1/4
+// each), or along ob or gp in it (1/8 each), either way round. Its parts are any of the
+// six; nothing given and turned (a ball) is drawn again. The visitor's directions go off
+// but down, which comes on pointing down the elevations, as the page's title asks.
+// The first of a visit is made in a world of down alone, so that its open-headed down is
+// the whole of the task.
+let found=null,homed=0,met=0;
+function foundling(){const r=gen(random()*4294967296>>>0),Q=anyturn(r),PICK=[[1,0,0],[0,1,0],[0,0,1],unit([1,0,.7]),unit([.3,.5,.8])];
+  let W,m;do{W={};if(!met)W.down=mul(mv(Q,PICK[r()*3|0]),r()<.5?-1:1);
+    else for(const k in KIND)if(r()<.5){const i=r()<.75?r()*3|0:3+(r()*2|0);W[k]=mul(mv(Q,PICK[i]),r()<.5?-1:1)}
+    m=[2,3,4,5,6,Infinity][r()*6|0]}while(!Object.keys(W).length&&m==Infinity);met++;
+  const st=group(W);S=seed(r()*4294967296>>>0);pose=I3;n=m;found={st,dirs:W,G:takes(st,m,S.frame),done:0};
+  for(const k in on)on[k]=k=="down"?1:0;raw.down=mul(mv(cam,[0,0,1]),-1);
+  for(const b of $("world").children)b.setAttribute("aria-pressed",b.textContent=="down");
+  [...$("parts").children].forEach((b,i)=>b.setAttribute("aria-pressed",[2,3,4,5,6,Infinity][i]==m))}
+function solve(){const W={};for(const k in KIND)if(on[k])W[k]=raw[k];
+  let dirs=snap(W);if(found)dirs=snapTo(dirs,found.G);
+  const st=group(dirs),mine=takes(st,n,S.frame),G=found?found.G:mine,F={parts:S.parts.map(q=>act(pose,q)),frame:S.frame};
+  // a beast while the world leaves its one mirror, the fragment beneath it otherwise
+  const B=!found&&S.beast&&shapeOf(G)=="Cs"?S.beast:null,Q=B?beastQ(G,dirs):null;
+  const K=B?placeBeast(B,Q):kept(F.parts,G),reach=max(...K.map(far));
+  // with a foundling, two forms, each from its group alone: the foundling's, and the
+  // world's the visitor has made; they are one when it is placed
+  now={dirs,st,mine,G,frag:K,reach,form:found?form(found.st,G,{},S.frame,reach,1):form(st,G,dirs,S.frame,reach),
+    myForm:found?form(st,mine,{},S.frame,reach,1):null};
+  // each direction kept by the body, by its law (always, but by a foundling)
+  now.kept={};for(const k in dirs)now.kept[k]=!found||keptBy(found.G,k,dirs[k]);
+  // placed only once set: not while a direction's head is held, but when it is let go
+  if(found){now.placed=!(grip&&grip.k)&&fits(mine,G);if(now.placed&&!found.done){found.done=1;homed++}}
+  // the directions the body can go by its own strokes: those its group keeps by the
+  // arrow's law; the law averaged over the group is the projector onto them
+  now.Pv=Array(9).fill(0);if(G.els)for(const g of G.els)for(let i=0;i<9;i++)now.Pv[i]+=g[i]/G.els.length;
+  // a turned body is drawn from its profile; its 360 copies are made only without WebGL
+  now.beast=B;now.beastQ=Q;
+  now.body=B?K:turned()?[]:body(F,G);shaped=0;eyes();
+  // the parts are there only where the world leaves a circle for them to take, and not
+  // for a foundling, whose lineage is its own
+  $("parts").hidden=!!found||st.type=="finite";tell()}
+
+// The views: from above, and from two sides, cameras a and b set at first on the world's
+// axes: a looks from +x toward the middle, b from -y. Each shows the space within L of the
+// middle. Held by the ground, the three turn together about the middle (cam), and stay a
+// plan and two elevations of each other.
+const L=1.55,VIEWS=[{X0:[1,0,0],Y0:[0,1,0],D0:[0,0,1]},{X0:[0,1,0],Y0:[0,0,1],D0:[1,0,0],tag:"a"},{X0:[1,0,0],Y0:[0,0,1],D0:[0,-1,0],tag:"b"}];
+let cam=I3;
+const aim=()=>{for(const V of VIEWS){V.X=mv(cam,V.X0);V.Y=mv(cam,V.Y0);V.D=mv(cam,V.D0)}};aim();
+// Square (W2p): the cameras turned back square to the world. The plan looks down its up
+// axis: against down where down is given; else the group's major axis (a turned group's,
+// or a finite group's turn axis of highest order, ties to one along a world direction),
+// signed toward the present up; else, with one mirror, the line in it across forward;
+// else the present up. Its right: forward's part across up; else the line nearest the
+// present right in a mirror holding up, so that b sees that mirror face-on; else a half
+// turn's axis across up; else the present right, made square.
+const turnAxis=g=>{const a=[g[7]-g[5],g[2]-g[6],g[3]-g[1]];if(len(a)>1e-6)return unit(a);
+    const C=[0,1,2].map(j=>[I3[j]+g[j],I3[3+j]+g[3+j],I3[6+j]+g[6+j]]);return unit(C.reduce((p,q)=>len(p)>len(q)?p:q))},
+  mirrorNormal=g=>unit([0,1,2].map(j=>[I3[j]-g[j],I3[3+j]-g[3+j],I3[6+j]-g[6+j]]).reduce((p,q)=>len(p)>len(q)?p:q)),
+  squared=()=>{const d=now.dirs,G=now.G,u0=mv(cam,[0,0,1]),r0=mv(cam,[1,0,0]),els=G.els||[],toward=(v,w)=>dot(v,w)<0?mul(v,-1):v,
+      along=v=>Object.values(d).some(w=>len(cross(v,w))<1e-6),
+      rots=els.filter(g=>det(g)>0&&g[0]+g[4]+g[8]<3-1e-9),mirrors=els.filter(g=>det(g)<0&&g[0]+g[4]+g[8]>.5);
+    let z=null,x=null;
+    if(d.down)z=mul(unit(d.down),-1);
+    else if(G.axis&&!G.ball)z=toward(unit(G.axis),u0);
+    else if(rots.length){let best=null,bo=0;for(const g of rots){const a=turnAxis(g),o=rots.filter(h=>len(cross(turnAxis(h),a))<1e-6).length+1;
+        if(o>bo||o==bo&&along(a)&&!along(best)){best=a;bo=o}}z=toward(best,u0)}
+    else if(mirrors.length==1&&d.forward){const v=cross(d.forward,mirrorNormal(mirrors[0]));if(len(v)>1e-6)z=toward(unit(v),u0)}
+    if(!z)z=u0;
+    const flat=v=>sub(v,mul(z,dot(v,z))),best=C=>C.reduce((p,q)=>!p||dot(q,r0)>dot(p,r0)?q:p,null);
+    if(d.forward&&len(flat(d.forward))>1e-6)x=unit(flat(d.forward));
+    else{const M=mirrors.map(mirrorNormal).filter(m=>abs(dot(m,z))<1e-6).map(m=>unit(cross(m,z)));
+      const H=rots.filter(g=>abs(g[0]+g[4]+g[8]+1)<1e-9).map(turnAxis).filter(a=>abs(dot(a,z))<1e-6);
+      const C=(M.length?M:H).flatMap(v=>[v,mul(v,-1)]);x=C.length?best(C):len(flat(r0))>1e-6?unit(flat(r0)):across(z)}
+    const y=cross(z,x);return[x[0],y[0],z[0],x[1],y[1],z[1],x[2],y[2],z[2]]};
+let sq=null;
+const square=()=>{const T=squared(),Rr=mm(T,tr(cam)),c0=max(-1,min(1,(Rr[0]+Rr[4]+Rr[8]-1)/2)),t=Math.acos(c0);
+  if(calm||t<1e-9){cam=T;aim();shaped=0;draw();return}
+  const s=[Rr[7]-Rr[5],Rr[2]-Rr[6],Rr[3]-Rr[1]],a=len(s)>1e-6?unit(s):turnAxis(Rr);sq={from:cam,a,t,T,t0:performance.now()};wake()},
+  // where the cameras are in a turn to square, each frame
+  squaring=()=>{if(!sq)return;const k=min(1,(performance.now()-sq.t0)/600);cam=k<1?mm(turn(sq.a,sq.t*ease(k)),sq.from):sq.T;aim();shaped=0;if(k>=1)sq=null};
+let CW,CH,dpr;
+// The page is seen whole on a full screen, without scrolling, and centred. Wide: the two
+// elevations stand stacked beside the plan, and the buttons and the label go beneath the
+// drawing, or, where that leaves the drawing larger, to its right at its foot, as a
+// museum's label hangs; the whole is as wide as what is in it. A line is held for the
+// tally before it appears. Narrow: the elevations side by side beneath the plan, and the
+// rest beneath them.
+const SIDE=384,GAP=40,MAIN=1088,PLAN=1400;
+function size(){dpr=devicePixelRatio||1;
+  const page=(document.documentElement.clientWidth||c.parentNode.clientWidth+32||632)-32,wide=page>=648,px=v=>parseFloat(v),
+    h=e=>e.offsetHeight+px(getComputedStyle(e).marginTop),body=getComputedStyle(document.body),
+    ends=px(body.paddingTop)+px(body.paddingBottom)+h($("by")),held=$("tally").hidden?px(getComputedStyle($("what")).lineHeight):0,
+    under=min((min(page,MAIN)-24)/1.5,innerHeight-ends-h($("nav"))-h($("label"))-held),
+    beside=min((page-24-GAP-SIDE)/1.5,innerHeight-ends,PLAN);
+  let W,E,side=false;
+  if(wide){side=beside>under;W=max(300,(side?beside:under)||min((min(page,MAIN)-24)/1.5,innerHeight-280));
+    E=(W-20)/2;VIEWS[0].r=[0,0,W];VIEWS[1].r=[W+24,0,E];VIEWS[2].r=[W+24,E+20,E];CW=round(W+24+E);CH=round(W)}
+  else{W=min(page,MAIN);E=(W-20)/2;VIEWS[0].r=[0,0,W];VIEWS[1].r=[0,W+20,E];VIEWS[2].r=[E+20,W+20,E];CW=round(W);CH=round(W+20+E)}
+  $("main").className=side?"beside":"";
+  $("main").style.maxWidth=$("by").style.maxWidth=wide?(side?CW+GAP+SIDE:CW)+"px":"";
+  for(const V of VIEWS){V.s=V.r[2]/2/L;V.cx=V.r[0]+V.r[2]/2;V.cy=V.r[1]+V.r[2]/2}
+  c.width=CW*dpr;c.height=CH*dpr;c.style.width=CW+"px";c.style.height=CH+"px";colours();shaped=0;
+  // square sits in the plan's top right corner
+  const q=$("square"),[x0,y0,s0]=VIEWS[0].r;q.style.left=(c.offsetLeft+x0+s0-10)+"px";q.style.top=(c.offsetTop+y0+6)+"px"}
+const at=(V,p)=>[V.cx+dot(V.X,p)*V.s,V.cy-dot(V.Y,p)*V.s];
+
+// The body, drawn true where WebGL 2 is to hand. Each part is a quad on the screen, and
+// within it the part's exact surface is found along the camera's line of sight, pixel by
+// pixel; of all the parts the nearest is kept, so the body is one solid. The specks share
+// its depth, so a speck passes behind it exactly where it is behind. Drawn at one and a
+// half times the screen's own pixels and set down smoothed, so its edge is not stepped.
+// It is engraved, after the plates of the old natural histories, lit from the upper left:
+// lines laid across the form four and a half page pixels apart (dp: the card's pixels to
+// the page's), along the part's own lines (s1, s2: distances along two of them), covering
+// more of the paper as the light leaves it, to under a half; a second set across them past
+// two thirds of shade; over the paper a hand-laid wash of the glaze (tint); an ink outline
+// where the surface turns away, near a page pixel wide (how far the edge is, from how fast
+// the normal turns toward it).
+const SHADE=`float hatch(float s,float cov){float f=s*px/(4.5*dp),d=abs(fract(f+.5)-.5)/max(fwidth(f),1e-5),hw=cov*2.25*dp;
+  return clamp(hw+.5-d,0.,1.)*clamp(2.*hw,0.,1.);}
+vec3 engraved(vec3 n,float s1,float s2){float t=clamp(1.-max(dot(n,normalize(vec3(-.45,.55,.7))),0.)/.95,0.,1.);
+  return mix(tint,ink,max(hatch(s1,.46*pow(t,1.2)),hatch(s2,.36*clamp((t-.66)/.34,0.,1.))));}
+float outline(vec3 n){return 1.-smoothstep(.6,1.3,.5*n.z/max(fwidth(n.z),1e-5)/dp);}`,
+  // a turned body, drawn as what it is: its profile about its axis is measured once (T:
+  // how far each point of the half-plane (distance from the axis, height along it) lies
+  // from the body, less than nothing inside), and each pixel's line of sight is walked
+  // against it
+  RV=`#version 300 es
+in vec2 q;uniform float l,R;out vec2 p;void main(){p=(q*2.-1.)*R*1.1;gl_Position=vec4(p/l,0.,1.);}`,
+  RF=`#version 300 es
+precision highp float;in vec2 p;uniform vec3 w,a,ik,ink,tint;uniform vec4 ey;uniform float R,px,dp;uniform sampler2D T;layout(location=0) out vec4 o;layout(location=1) out vec4 o2;${SHADE}
+float h(float r,float z){return texture(T,vec2(r/R,z/R*.5+.5)).r;}
+float f(vec3 x){float z=dot(x,a),r=length(x-z*a);vec2 u=vec2(r,z),c=clamp(u,vec2(0.,-R),vec2(R));return h(c.x,c.y)+length(u-c);}
+void main(){vec3 x=vec3(p,1.7*R);float d=1.;for(int i=0;i<110;i++){d=f(x);if(d<.001||x.z<-1.7*R)break;x.z-=d*.95+.0004;}
+  bool miss=d>.006;float z=dot(x,a),e=.008;vec3 rv=x-z*a;float r=length(rv);
+  vec3 n=normalize((h(r+e,z)-h(max(r-e,0.),z))*(r>1e-5?rv/r:vec3(0.))+(h(r,z+e)-h(r,z-e))*a+vec3(0.,0.,1e-6));
+  // an eye off the axis goes all the way round: a white band about (ey.x from the axis,
+  // ey.y along it), a dark line down its middle; on both sides where the body is mirrored
+  float de=length(vec2(r-ey.x,z-ey.y));if(ey.z>.5)de=min(de,length(vec2(r-ey.x,z+ey.y)));
+  // engraved, its lines are its parallels, and across them lines along its length
+  vec3 q=cross(a,vec3(0,0,1));q=dot(q,q)>1e-10?normalize(q):vec3(1,0,0);
+  vec3 c=ey.w>.5&&de<.062?(de<.026?ik:w):engraved(n,z,dot(x,q));
+  c=mix(c,ink,outline(n));
+  gl_FragDepth=.5-x.z/6.;o=vec4(c,1.);o2=vec4(n*.5+.5,1.);if(miss)discard;}`,
+  BV=`#version 300 es
+in vec2 q;in vec4 b,e0,e1,e2,e3;uniform float l;out vec2 p;flat out vec4 E0,E1,E2,E3;
+void main(){p=mix(b.xy,b.zw,q);E0=e0;E1=e1;E2=e2;E3=e3;gl_Position=vec4(p/l,0.,1.);}`,
+  BF=`#version 300 es
+precision highp float;in vec2 p;flat in vec4 E0,E1,E2,E3;uniform vec3 w,ik,pc[5],ink,tint;uniform float px,dp;layout(location=0) out vec4 o;layout(location=1) out vec4 o2;${SHADE}
+void main(){vec3 ro=vec3(p,9.),rd=vec3(0,0,-1),n=vec3(0,0,1);float t,s1,s2;bool miss;
+  if(E0.w<.5){vec3 oc=ro-E0.xyz,O=vec3(dot(E1.xyz,oc),dot(E2.xyz,oc),dot(E3.xyz,oc)),d=-vec3(E1.z,E2.z,E3.z);
+    float A=dot(d,d),B=dot(O,d),h=B*B-A*(dot(O,O)-1.);miss=h<0.;t=(-B-sqrt(max(h,0.)))/A;vec3 u=O+t*d;
+    n=normalize(E1.xyz*u.x+E2.xyz*u.y+E3.xyz*u.z);
+    // along the ellipsoid's own axes, in the world's measure: the two lying most in the
+    // view's plane, so its lines cross the form as it is seen
+    vec3 m=1./vec3(length(E1.xyz),length(E2.xyz),length(E3.xyz)),U=u*m,zz=abs(vec3(E1.z,E2.z,E3.z))*m;
+    if(zz.x<=zz.y&&zz.x<=zz.z){s1=U.x;s2=zz.y<=zz.z?U.y:U.z;}else if(zz.y<=zz.z){s1=U.y;s2=zz.x<=zz.z?U.x:U.z;}else{s1=U.z;s2=zz.x<=zz.y?U.x:U.y;}}
+  // a limb: a round cone, from pa (radius ra) to pb (radius rb); the ray meets its side,
+  // where the side is met between the two ends, or else the nearer of its two end balls
+  // (Quilez's round-cone intersector)
+  else{vec3 pa=E0.xyz,pb=E1.xyz,ba=pb-pa,oa=ro-pa,ob=ro-pb;float ra=E1.w,rb=E2.x,rr=ra-rb,
+      m0=dot(ba,ba),m1=dot(ba,oa),m2=dot(ba,rd),m3=dot(rd,oa),m5=dot(oa,oa),m6=dot(ob,rd),m7=dot(ob,ob),
+      d2=m0-rr*rr,k2=d2-m2*m2,k1=d2*m3-m1*m2+m2*rr*ra,k0=d2*m5-m1*m1+m1*rr*ra*2.-m0*ra*ra,h=k1*k1-k0*k2;
+    t=-1.;bool side=false;
+    if(abs(k2)>1e-9*m0&&h>=0.){float ts=(-sqrt(h)-k1)/k2,y=m1-ra*rr+ts*m2;if(y>0.&&y<d2){t=ts;n=normalize(d2*(oa+ts*rd)-ba*y);side=true;}}
+    if(!side){float h1=m3*m3-m5+ra*ra,h2=m6*m6-m7+rb*rb;
+      if(h1>0.){t=-m3-sqrt(h1);n=(oa+t*rd)/ra;}
+      if(h2>0.){float t2=-m6-sqrt(h2);if(t<0.||t2<t){t=t2;n=(ob+t2*rd)/rb;}}}
+    miss=t<0.;vec3 x=ro+t*rd-pa;float bb=m0;
+    // round the limb, and along it
+    vec3 q=cross(ba,vec3(0,0,1));q=dot(q,q)>1e-10?normalize(q):vec3(1,0,0);s1=dot(x,ba)/sqrt(bb);s2=dot(x,q);}
+  gl_FragDepth=.5-(9.-t)/6.;
+  // an eye keeps its own colours whatever the theme: a white, a dark pupil, a dark rim
+  bool eye=E0.w<.5&&E2.w>.5;
+  vec3 c=eye?(E2.w>2.5?pc[int(E2.w+.5)-3]:E2.w>1.5?ik:w):engraved(n,s1,s2);
+  c=mix(c,eye?ik:ink,outline(n));
+  o=vec4(c,1.);o2=vec4(n*.5+.5,1.);if(miss)discard;}`,
+  SV=`#version 300 es
+in vec4 s;in float u;uniform float l,z;out float A;void main(){gl_Position=vec4(s.xy/l,.5-s.z/6.,1.);gl_PointSize=z*u;A=s.w;}`,
+  SF=`#version 300 es
+precision highp float;in float A;uniform vec3 k;out vec4 o;void main(){vec2 d=gl_PointCoord-.5;if(dot(d,d)>.25)discard;o=vec4(A*k,A);}`,
+  // The body is drawn first to a card of its own, its normals kept beside its colours;
+  // then set down, engraved, with ink where two parts meet: where the normal jumps by more
+  // than 40 degrees from one pixel to the next (within a part it turns smoothly). Its depth
+  // goes down with it, so a speck still passes behind it exactly where it is behind.
+  CV=`#version 300 es
+layout(location=0) in vec2 q;void main(){gl_Position=vec4(q*2.-1.,0.,1.);}`,
+  CF=`#version 300 es
+precision highp float;uniform sampler2D C,Nm,Dp;uniform vec3 ink;uniform float k;out vec4 o;
+void main(){ivec2 p=ivec2(gl_FragCoord.xy);vec4 c=texelFetch(C,p,0);if(c.a<.5)discard;
+  vec3 a=texelFetch(Nm,p,0).xyz*2.-1.;float e=0.;int s=max(1,int(.5*k));
+  for(int i=0;i<4;i++){vec4 m=texelFetch(Nm,p+ivec2(i==0?s:i==1?-s:0,i==2?s:i==3?-s:0),0);if(m.a>.5)e=max(e,1.-dot(a,m.xyz*2.-1.));}
+  c.rgb=mix(c.rgb,ink,smoothstep(.2,.3,e));
+  gl_FragDepth=texelFetch(Dp,p,0).r;o=c;}`;
+let gl=null,glc,PB,PS,PR,PC,vaoB,vaoS,vaoQ,vaoC,bufS,U={};
+function glUp(){try{glc=document.createElement("canvas");
+  const g=glc.getContext("webgl2",{premultipliedAlpha:true,preserveDrawingBuffer:true,antialias:false,alpha:true});if(!g||!g.createVertexArray)return;
+  const prog=(vs,fs)=>{const p=g.createProgram();for(const[t,s]of[[g.VERTEX_SHADER,vs],[g.FRAGMENT_SHADER,fs]]){const h=g.createShader(t);
+      g.shaderSource(h,s);g.compileShader(h);g.attachShader(p,h)}g.linkProgram(p);if(!g.getProgramParameter(p,g.LINK_STATUS))throw 0;return p};
+  PB=prog(BV,BF);PS=prog(SV,SF);PR=prog(RV,RF);PC=prog(CV,CF);
+  for(const k of["C","Nm","Dp","ink","k"])U["c"+k]=g.getUniformLocation(PC,k);
+  U.fb=g.createFramebuffer();U.fc=g.createTexture();U.fn=g.createTexture();U.fd=g.createTexture();U.fs=0;
+  for(const k of["l","w","ik","pc","ink","tint","px","dp"])U[k]=g.getUniformLocation(PB,k);for(const k of["l","z","k"])U["s"+k]=g.getUniformLocation(PS,k);
+  for(const k of["l","w","a","R","T","ik","ey","ink","tint","px","dp"])U["r"+k]=g.getUniformLocation(PR,k);
+  // the body: one quad, and for each part its box and four vec4s, instanced
+  const quad=g.createBuffer();g.bindBuffer(g.ARRAY_BUFFER,quad);g.bufferData(g.ARRAY_BUFFER,new Float32Array([0,0,1,0,0,1,1,1]),g.STATIC_DRAW);
+  vaoQ=g.createVertexArray();g.bindVertexArray(vaoQ);let a=g.getAttribLocation(PR,"q");g.enableVertexAttribArray(a);g.vertexAttribPointer(a,2,g.FLOAT,false,0,0);
+  vaoC=g.createVertexArray();g.bindVertexArray(vaoC);g.enableVertexAttribArray(0);g.vertexAttribPointer(0,2,g.FLOAT,false,0,0);
+  U.tex=g.createTexture();g.bindTexture(g.TEXTURE_2D,U.tex);
+  for(const[k,v]of[[g.TEXTURE_MIN_FILTER,g.LINEAR],[g.TEXTURE_MAG_FILTER,g.LINEAR],[g.TEXTURE_WRAP_S,g.CLAMP_TO_EDGE],[g.TEXTURE_WRAP_T,g.CLAMP_TO_EDGE]])g.texParameteri(g.TEXTURE_2D,k,v);
+  vaoB=g.createVertexArray();g.bindVertexArray(vaoB);
+  a=g.getAttribLocation(PB,"q");g.enableVertexAttribArray(a);g.vertexAttribPointer(a,2,g.FLOAT,false,0,0);
+  U.at=["b","e0","e1","e2","e3"].map(nm=>{a=g.getAttribLocation(PB,nm);g.enableVertexAttribArray(a);g.vertexAttribDivisor(a,1);return a});
+  vaoS=g.createVertexArray();g.bindVertexArray(vaoS);bufS=g.createBuffer();g.bindBuffer(g.ARRAY_BUFFER,bufS);
+  a=g.getAttribLocation(PS,"s");g.enableVertexAttribArray(a);g.vertexAttribPointer(a,4,g.FLOAT,false,20,0);
+  a=g.getAttribLocation(PS,"u");g.enableVertexAttribArray(a);g.vertexAttribPointer(a,1,g.FLOAT,false,20,16);g.bindVertexArray(null);gl=g}catch(e){gl=null}}
+// A turned body's profile: for each point of the half-plane (distance r from the axis,
+// height z along it), how far the circle through it lies from the fragment; less than
+// nothing inside. A limb swept about the axis is exactly the discs of its balls, so its
+// distance is the least to 129 of them along it. For an ellipsoid it is the least at 65
+// points of the circle about the part's azimuth, each by the ellipsoid's own measure
+// scaled by its least semi-axis, never more than the distance. Far from a part, its
+// distance from the ball that holds the part is taken instead. Where the world's group
+// has the mirror across the axis, the profile is its own mirror image.
+function profile(){const a=now.G.axis,e=across(a),g=cross(a,e),R=now.reach*1.06,NR=96,NZ=192,d=new Float32Array(NR*NZ).fill(9);
+  for(const q of now.frag){const c=q.k?mul(add(q.p[0],q.p[1]),.5):q.c,b=q.k?len(sub(q.p[0],q.p[1]))/2+max(q.r,q.r2):max(...q.ax),
+      zc=dot(a,c),xc=dot(e,c),yc=dot(g,c),rc=Math.hypot(xc,yc),fc=atan2(yc,xc),Rt=q.k?0:tr(q.R),mn=q.k?0:min(...q.ax),
+      // a limb, swept about the axis, is exactly its balls' discs in the half-plane: each
+      // ball about its distance from the axis and its height, of its own radius
+      discs=q.k?Array.from({length:129},(_,i)=>{const t=i/128,p=add(q.p[0],mul(sub(q.p[1],q.p[0]),t)),h=dot(a,p);
+        return[len(sub(p,mul(a,h))),h,q.r+(q.r2-q.r)*t]}):0,
+      dist=p=>{const v=mv(Rt,sub(p,q.c));return(Math.hypot(v[0]/q.ax[0],v[1]/q.ax[1],v[2]/q.ax[2])-1)*mn};
+    for(let j=0;j<NZ;j++){const z=(2*(j+.5)/NZ-1)*R;for(let i=0;i<NR;i++){const r=(i+.5)/NR*R,k=j*NR+i,off=Math.hypot(r-rc,z-zc)-b;
+      if(off>.08){if(off<d[k])d[k]=off;continue}
+      let m=9;
+      if(q.k)for(const[u,h,s]of discs){const v=Math.hypot(r-u,z-h)-s;if(v<m)m=v}
+      // an ellipsoid: the circle's nearest point, among 65 about the part's own azimuth
+      else{const w=r>b+.1?Math.asin(min(1,(b+.1)/r)):P;
+        for(let s=0;s<=64;s++){const f=fc+w*(s/32-1),v=dist(add(mul(a,z),add(mul(e,r*cos(f)),mul(g,r*sin(f)))));if(v<m)m=v}}
+      if(m<d[k])d[k]=m}}}
+  if(/h$/.test(now.G.name))for(let j=0;j<NZ/2;j++)for(let i=0;i<NR;i++){const k=j*NR+i,o=(NZ-1-j)*NR+i;d[k]=d[o]=min(d[k],d[o])}
+  return{d,R,NR,NZ}}
+// a part in a view's own frame (right, up, toward the camera), with its box on the screen:
+// an ellipsoid as its centre and the rows of diag(1/a) R^T Q^T, so |M (x - c)| = 1 on it;
+// a limb as its two ends and their radii; the ball as an ellipsoid of one radius
+function packed(V,parts){const f=new Float32Array(parts.length*20),to=p=>[dot(V.X,p),dot(V.Y,p),dot(V.D,p)];
+  parts.forEach((q,i)=>{const o=i*20;
+    if(q.k==0){const c=to(q.c),w=shadow(q,V.X,V.Y),C=cos(w.t),S=sin(w.t),hx=sqrt(w.rx*w.rx*C*C+w.ry*w.ry*S*S),hy=sqrt(w.rx*w.rx*S*S+w.ry*w.ry*C*C);
+      f.set([c[0]-hx,c[1]-hy,c[0]+hx,c[1]+hy,c[0],c[1],c[2],0],o);
+      for(let j=0;j<3;j++){const r=to([q.R[j],q.R[3+j],q.R[6+j]]);f.set([r[0]/q.ax[j],r[1]/q.ax[j],r[2]/q.ax[j],0],o+8+4*j)}
+      if(q.tint)f[o+15]=q.tint}
+    else if(q.k==1){const a=to(q.p[0]),b=to(q.p[1]),r=max(q.r,q.r2);
+      f.set([min(a[0],b[0])-r,min(a[1],b[1])-r,max(a[0],b[0])+r,max(a[1],b[1])+r,a[0],a[1],a[2],1,b[0],b[1],b[2],q.r,q.r2],o)}
+    else{const r=q.r;f.set([-r,-r,r,r,0,0,0,0,1/r,0,0,0,0,1/r,0,0,0,0,1/r,0],o)}});
+  return f}
+const unit3=s=>(s.match(/\d+/g)||[0,0,0]).slice(0,3).map(v=>v/255);
+// one view, drawn in WebGL and set into the page's canvas
+function glView(V,parts,fresh,R){const[x0,y0,side]=V.r,N=min(2048,round(side*dpr*1.5)),
+    style=k=>{gl.uniform3fv(U[k+"ink"],col.inkv);gl.uniform3fv(U[k+"tint"],col.tint);gl.uniform1f(U[k+"px"],N/(2*L));gl.uniform1f(U[k+"dp"],N/side)};
+  if(glc.width!=N)glc.width=glc.height=N;
+  // the body's own card, as large as the largest view yet, colours, normals and depth
+  if(U.fs<N){U.fs=N;for(const[t,f,i,ty]of[[U.fc,gl.RGBA8,gl.RGBA,gl.UNSIGNED_BYTE],[U.fn,gl.RGBA8,gl.RGBA,gl.UNSIGNED_BYTE],[U.fd,gl.DEPTH_COMPONENT24,gl.DEPTH_COMPONENT,gl.UNSIGNED_INT]]){
+      gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,f,N,N,0,i,ty,null);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST)}
+    gl.bindFramebuffer(gl.FRAMEBUFFER,U.fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,U.fc,0);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT1,gl.TEXTURE_2D,U.fn,0);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.TEXTURE_2D,U.fd,0);gl.drawBuffers([gl.COLOR_ATTACHMENT0,gl.COLOR_ATTACHMENT1])}
+  gl.bindFramebuffer(gl.FRAMEBUFFER,U.fb);gl.viewport(0,0,N,N);gl.clearColor(0,0,0,0);
+  gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.depthFunc(gl.LESS);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  if(turned()){// its profile, measured once for the body and kept on the card
+    if(!now.up){now.up=1;const p=now.rev||(now.rev=profile());gl.bindTexture(gl.TEXTURE_2D,U.tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.R16F,p.NR,p.NZ,0,gl.RED,gl.FLOAT,p.d)}
+    const a=now.G.axis;gl.useProgram(PR);gl.bindVertexArray(vaoQ);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,U.tex);
+    gl.uniform1i(U.rT,0);gl.uniform1f(U.rl,L);gl.uniform1f(U.rR,now.rev.R);gl.uniform3f(U.ra,dot(V.X,a),dot(V.Y,a),dot(V.D,a));
+    gl.uniform3fv(U.rw,col.gloss);gl.uniform3fv(U.rik,col.pupil);
+    gl.uniform4fv(U.rey,now.ring||[0,0,0,0]);style("r");gl.drawArrays(gl.TRIANGLE_STRIP,0,4)}
+  else{// each view keeps its parts on the card, sent again only when the body changes
+    gl.useProgram(PB);gl.bindVertexArray(vaoB);if(!V.gb)V.gb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,V.gb);
+    if(fresh||!V.f){V.f=packed(V,parts);gl.bufferData(gl.ARRAY_BUFFER,V.f,gl.DYNAMIC_DRAW)}
+    U.at.forEach((a,i)=>gl.vertexAttribPointer(a,4,gl.FLOAT,false,80,16*i));
+    gl.uniform1f(U.l,L);gl.uniform3fv(U.w,col.gloss);style("");
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP,0,4,parts.length)}
+  // its eyes, made again each frame: they look about, and turn with a spinning body
+  const ep=(E=>bending()?E.map(q=>bendPart(q,now.dirs.forward,bendN,.5*bent)):E)(eyeParts(R));
+  if(ep.length){gl.useProgram(PB);gl.bindVertexArray(vaoB);if(!V.eb)V.eb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,V.eb);
+    gl.bufferData(gl.ARRAY_BUFFER,packed(V,ep),gl.DYNAMIC_DRAW);U.at.forEach((a,i)=>gl.vertexAttribPointer(a,4,gl.FLOAT,false,80,16*i));
+    gl.uniform1f(U.l,L);gl.uniform3fv(U.w,col.gloss);gl.uniform3fv(U.ik,col.pupil);gl.uniform3fv(U.pc,col.per);style("");
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP,0,4,ep.length)}
+  // set down onto the view's card, with its creases and its depth
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,N,N);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  gl.useProgram(PC);gl.bindVertexArray(vaoC);gl.depthFunc(gl.ALWAYS);
+  [[U.fc,"C"],[U.fn,"Nm"],[U.fd,"Dp"]].forEach(([t,k],i)=>{gl.activeTexture(gl.TEXTURE1+i);gl.bindTexture(gl.TEXTURE_2D,t);gl.uniform1i(U["c"+k],1+i)});
+  gl.uniform3fv(U.cink,col.inkv);gl.uniform1f(U.ck,N/side);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);gl.activeTexture(gl.TEXTURE0);
+  const s=new Float32Array(NT*5);specks.forEach((b,i)=>s.set([dot(V.X,b.p),dot(V.Y,b.p),dot(V.D,b.p),min(1,(sim-b.t)/400)*.6,b.s],5*i));
+  gl.useProgram(PS);gl.bindVertexArray(vaoS);gl.bindBuffer(gl.ARRAY_BUFFER,bufS);gl.bufferData(gl.ARRAY_BUFFER,s,gl.DYNAMIC_DRAW);
+  gl.uniform1f(U.sl,L);gl.uniform1f(U.sz,3*N/side);gl.uniform3fv(U.sk,unit3(col.ink));
+  gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.depthFunc(gl.LEQUAL);
+  gl.drawArrays(gl.POINTS,0,NT);
+  // the crumbs, larger, in the glaze's accent, behind the body where they are behind it
+  if(crumbs.length){const cb=new Float32Array(crumbs.length*5);crumbs.forEach((b,i)=>cb.set([dot(V.X,b.p),dot(V.Y,b.p),dot(V.D,b.p),1,2.2],5*i));
+    gl.bufferData(gl.ARRAY_BUFFER,cb,gl.DYNAMIC_DRAW);gl.uniform3fv(U.sk,unit3(col.accent));gl.drawArrays(gl.POINTS,0,crumbs.length)}
+  gl.disable(gl.BLEND);gl.bindVertexArray(null);
+  x.drawImage(glc,0,0,N,N,x0,y0,side,side)}
+
+// Without WebGL 2: the body in silhouette, in its glaze, kept until it changes; the specks
+// behind it, and before it where they are nearer the camera than any part of it.
+function silhouette(V,parts){const o=V.o||(V.o=document.createElement("canvas")),side=V.r[2],h=side/2,s=V.s;
+  o.width=o.height=round(side*dpr);const g=o.getContext("2d");g.setTransform(dpr,0,0,dpr,0,0);g.fillStyle=col.body;
+  // each part filled on its own, so no two windings cancel: an ellipse, a disc, or a limb's
+  // two end discs and the band between them
+  for(const q of parts){const w=shadow(q,V.X,V.Y),path=new Path2D();
+    if(w.k==0){const X=h+w.x*s,Y=h-w.y*s,a=-w.t;path.moveTo(X+w.rx*s*cos(a),Y+w.rx*s*sin(a));path.ellipse(X,Y,w.rx*s,w.ry*s,a,0,2*P)}
+    else if(w.k==2){path.moveTo(h+w.r*s,h);path.arc(h,h,w.r*s,0,2*P)}
+    else{const A=[h+w.a[0]*s,h-w.a[1]*s],B=[h+w.b[0]*s,h-w.b[1]*s],dl=Math.hypot(B[0]-A[0],B[1]-A[1])||1,nx=(A[1]-B[1])/dl,ny=(B[0]-A[0])/dl,ra=w.r*s,rb=w.r2*s;
+      path.moveTo(A[0]+ra,A[1]);path.arc(A[0],A[1],ra,0,2*P);path.moveTo(B[0]+rb,B[1]);path.arc(B[0],B[1],rb,0,2*P);
+      path.moveTo(A[0]+nx*ra,A[1]+ny*ra);path.lineTo(B[0]+nx*rb,B[1]+ny*rb);path.lineTo(B[0]-nx*rb,B[1]-ny*rb);path.lineTo(A[0]-nx*ra,A[1]-ny*ra);path.lineTo(A[0]+nx*ra,A[1]+ny*ra)}
+    g.fill(path)}}
+
+// The medium: specks carried by the world's own flows, idealised, the same in every view.
+// The water is still and the body goes: down, the specks stream up past it at 0.25 a
+// second (the body sinks); forward, they stream back past it at 0.5 (the body goes forward); a spin: body and medium turn together, once in 12 seconds; a stretch: pure
+// strain at 0.3 a second along it. With nothing given they wander. A speck that leaves the
+// space is born again somewhere in it, fading in over 0.4 s. (Rates in the body's reach
+// per second: chosen, not measured.)
+const STEP=1000/240,NT=140,specks=[],OMEGA=2*P/12;let sim=0;
+const born=()=>({p:[0,1,2].map(()=>(2*random()-1)*L),t:sim,s:1});
+for(let i=0;i<NT;i++){const b=born();b.t=-1e9;specks.push(b)}
+function flow(p,sz){const d=now.dirs;let u=[0,0,0];
+  if(d.down)u=add(u,mul(d.down,-.25));
+  if(d.forward)u=add(u,mul(d.forward,-.5));
+  if(d.spin)u=add(u,mul(cross(d.spin,p),OMEGA));
+  if(d.stretch){const a=dot(d.stretch,p),along=mul(d.stretch,a);u=add(u,mul(sub(along,mul(sub(p,along),.5)),.3))}
+  return u}
+// Crumbs (W2k), dropped by a click, carried by the same flows; at most 12. The body goes
+// for the nearest by its own strokes, which share its symmetry, so only along directions
+// its group keeps by the arrow's law (Curie): along the way to the crumb so projected, at
+// 0.3 a second (chosen), slowing only within 0.015 of where it can come nearest. The water
+// is still and the body goes, so all else moves past it the other way. A crumb within
+// 0.02 of the body is eaten.
+const crumbs=[];let eaten=0;
+// (W2m) while it turns, or waits to, it strokes only along the turn's axis, where that is
+// kept, so its speed through the water stays the stream's and its turning circle is the
+// one reckoned
+const goes=()=>{if(!crumbs.length)return[0,0,0];const c=crumbs.reduce((a,b)=>len(b.p)<len(a.p)?b:a).p;let v=mv(now.Pv,c);
+    if(steerW)v=len(sub(mv(now.Pv,steerW),steerW))<1e-9?mul(steerW,dot(v,steerW)):[0,0,0];
+    const s=len(v);return s>1e-9?mul(v,min(.3,20*s)/s):[0,0,0]},
+  crumbIn=p=>{if(now.G.ball)return len(p)<now.reach+.02;const R=spinNow();if(R)p=mv(tr(R),p);
+    if(turned()){const f=now.rev||(now.rev=profile()),a=now.G.axis,z=dot(p,a),i=len(sub(p,mul(a,z)))/f.R*f.NR|0,j=Math.floor((z/f.R+1)/2*f.NZ);
+      return i<f.NR&&j>=0&&j<f.NZ&&f.d[j*f.NR+i]<.02}
+    for(const q of now.body){const[c,b]=bound(q);if(len(sub(p,c))-b>.02)continue;if(partDist(q,p)<.02)return true}return false};
+// The bend (W2m). Forward is the body's own travel; down, the spin and the stretch are
+// the medium's. For a crumb it cannot reach, a body with a heading turns it, about an axis
+// that leaves the medium's directions where they are (down's line, or the spin's or the
+// stretch's; any, with none), the least turn that brings the crumb ahead, at 60 degrees a
+// second (chosen), until the crumb is within half a degree of its reach. A turn about an
+// axis its group keeps (by the spin's law) commutes with the group, so it maps what the
+// body can reach onto itself and never helps: every turn made bends (the flag is computed
+// anyway, as the check). It bends so: each point x moved toward the turn,
+// along n = unit(axis x heading), by 0.5 (x . heading)^2 (chosen). Bent, its shape keeps
+// the elements of its group that keep the heading's line and n. A turned body, drawn whole,
+// has no parts to bend, and does not turn; nor does a foundling, whose forward is a guess.
+let bent=0,bendN=null;
+const bending=()=>bent>.001&&bendN&&now.dirs.forward;
+const plan=()=>{const d=now.dirs,f=d.forward;if(!f||found||turned()||!crumbs.length)return null;
+    // in reach and ahead, it needs no turn; in reach but behind, the stream (0.5) outruns
+    // its stroke (0.3), so that is out of reach too
+    const c=crumbs.reduce((a,b)=>len(b.p)<len(a.p)?b:a).p,off=p=>len(sub(p,mv(now.Pv,p)));if(off(c)<=.03&&dot(c,f)>=0)return null;
+    const med=["down","spin","stretch"].filter(k=>d[k]).map(k=>d[k]);let w=med[0];
+    if(med.some(m=>len(cross(m,w))>1e-6))return null;if(!w){const x=cross(f,c);if(len(x)<1e-9)return null;w=x}w=unit(w);
+    // the turn of least size that brings the crumb within reach and ahead, by degrees either way
+    let best=null;for(let i=1;i<=180&&best==null;i++)for(const s of[1,-1]){const q=mv(turn(w,-s*i*P/180),c);if(best==null&&off(q)<.01&&dot(q,f)>=0)best=s*i*P/180}
+    if(best==null)return null;
+    // how far the crumb lies from the centre of the circle that turn would follow, in its
+    // radii: inside it, the stream carries the crumb round as fast as the body turns, and
+    // no turn reaches it (a boat's turning circle)
+    const fa=sub(f,mul(w,dot(f,w))),Rt=.5*len(fa)/(P/3),side=unit(cross(mul(w,Math.sign(best)),f)),ca=sub(c,mul(w,dot(c,w))),
+      far=len(sub(ca,mul(side,Rt)))/Rt;
+    return{w,th:best,far,bend:!now.G.els.every(g=>keeps(g,1,w))}},
+  // a part moved by the bend: centres and ends, each part keeping its own shape
+  bendPart=(q,f,n,k)=>{const m=x=>add(x,mul(n,dot(x,f)*dot(x,f)*k));return q.k==1?{...q,p:q.p.map(m)}:q.k==0?{...q,c:m(q.c)}:q},
+  bendGroup=(G,f,n)=>G.els.filter(g=>(len(sub(mv(g,f),f))<1e-6||len(add(mv(g,f),f))<1e-6)&&len(sub(mv(g,n),n))<1e-6);
+// A crumb inside the turning circle sends the body straight on, until the stream has
+// carried the crumb out to 1.5 radii (chosen); then it turns. In a steady turn the crumb's
+// distance from the circle's centre holds, so a turn begun there runs to its end. (Asked
+// at the edge alone, the test chatters there, and the body orbits the crumb.)
+let waits=0,steerW=null;
+function steer(dt){let p=plan();const was=!!bending();
+  if(!p)waits=0;else{if(p.far<1)waits=1;else if(p.far>=1.5)waits=0}
+  steerW=p&&(waits||abs(p.th)>P/360)?p.w:null;if(waits)p=null;
+  if(p&&abs(p.th)>P/360){const a=Math.sign(p.th)*min(abs(p.th),P/3*dt),R=turn(p.w,a);
+    raw.forward=mv(R,raw.forward);pose=mm(R,pose);S.frame=mm(R,S.frame);eyeDir=mv(R,eyeDir);
+    bendN=p.bend?unit(cross(mul(p.w,Math.sign(a)),now.dirs.forward)):null;bent=p.bend?min(1,bent+5*dt):max(0,bent-5*dt);solve()}
+  else{bent=max(0,bent-5*dt);if(!bent)bendN=null}
+  if(was!=!!bending())tell()}
+function step(){sim+=STEP;const dt=STEP/1000,still=!Object.keys(now.dirs).length;steer(dt);const v=goes();
+  if(now.dirs.spin)spun+=OMEGA*dt;
+  for(const b of specks){b.p=add(b.p,mul(sub(flow(b.p,b.s),v),dt));
+    if(still)b.p=b.p.map(v=>v+(random()-.5)*.02);
+    if(b.p.some(v=>abs(v)>L))Object.assign(b,born())}
+  let ate=0;for(let i=crumbs.length;i--;){const b=crumbs[i];b.p=add(b.p,mul(sub(flow(b.p,1),v),dt));
+    if(still)b.p=b.p.map(v=>v+(random()-.5)*.02);
+    if(crumbIn(b.p)){crumbs.splice(i,1);eaten++;ate=1}else if(b.p.some(v=>abs(v)>L))crumbs.splice(i,1)}
+  if(ate)tell()}
+
+// The world's directions, drawn through the middle, their heads in front: an arrow's head,
+// a spin's turning ring, a stretch's two outward heads. Each kind at its own reach.
+const REACH={down:1.3,forward:1.3,spin:1.12,stretch:1.42};
+const heads=(V,k)=>{const v=shown()[k],r=REACH[k];return k=="stretch"?[[v,r,1],[mul(v,-1),r,-1]]:[[v,r,1]]};
+function arrowHead(X,Y,ux,uy,z){x.beginPath();x.moveTo(X+ux*z,Y+uy*z);x.lineTo(X-uy*z*.55,Y+ux*z*.55);x.lineTo(X+uy*z*.55,Y-ux*z*.55);x.closePath()}
+// marks and words drawn over the body or the specks carry a rim of paper, so they read
+const rimmed=(draw,fill)=>{x.save();x.strokeStyle=col.paper;x.lineWidth=4;x.lineJoin="round";draw();x.stroke();x.restore();
+  draw();if(fill){x.fill()}else x.stroke()};
+let placed=[];
+// a word near its head, kept inside its view, never over another word
+function word(V,k,X,Y){x.font=col.font;const w=x.measureText(k).width,[x0,y0,side]=V.r;
+  let a=min(max(X+9,x0+6),x0+side-w-6),b=min(max(Y-8,y0+14),y0+side-6);
+  while(placed.some(([p,q,pw])=>abs(q-b)<12&&a<p+pw+4&&p<a+w+4))b+=12;placed.push([a,b,w]);
+  x.save();x.strokeStyle=col.paper;x.lineWidth=3;x.lineJoin="round";x.strokeText(k,a,b);x.restore();x.fillText(k,a,b)}
+// A head is filled where the body keeps its direction, and open where a foundling breaks
+// it. Seen end on, a direction going away is drawn faint where the body stands before it.
+function direction(V,k,front){const v=shown()[k],r=REACH[k],p=[dot(V.X,v),dot(V.Y,v)],m=Math.hypot(p[0],p[1]),dep=dot(V.D,v),full=now.kept[k]?1:0;
+  x.strokeStyle=x.fillStyle=front?col.accent:col.base;x.lineWidth=1.2;
+  const tip=sg=>[V.cx+sg*p[0]*r*V.s,V.cy-sg*p[1]*r*V.s];
+  if(!front){x.globalAlpha=.55;x.beginPath();const a=k=="stretch"?tip(-1):[V.cx,V.cy],b=tip(1);x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1]);
+    // a guess at a foundling's world: its shaft dashed till the foundling is placed
+    if(found&&!now.placed)x.setLineDash([4,3]);x.stroke();x.setLineDash([]);x.globalAlpha=1;return}
+  for(const sg of k=="stretch"?[1,-1]:[1]){const[X,Y]=tip(sg),z=9;
+    if(k=="spin"){// a small ring about the axis, its arrow by the right hand
+      const u=across(v),w=cross(v,u),pts=[];for(let i=0;i<=24;i++){const t=i/24*1.6*P,q=add(mul(v,r),add(mul(u,.16*cos(t)),mul(w,.16*sin(t))));pts.push(at(V,q))}
+      rimmed(()=>{x.beginPath();pts.forEach((q,i)=>i?x.lineTo(q[0],q[1]):x.moveTo(q[0],q[1]))});
+      const e=pts[24],f=pts[22],dx=e[0]-f[0],dy=e[1]-f[1],dl=Math.hypot(dx,dy);
+      if(dl>1)rimmed(()=>arrowHead(e[0],e[1],dx/dl,dy/dl,7),full)}
+    else if(m<.12){// along the line of sight: toward the camera a dot, away from it a cross
+      if(sg*dep<0&&overBody(V,X,Y))x.globalAlpha=.3;
+      rimmed(()=>{x.beginPath();x.arc(X,Y,6,0,2*P)});
+      if(sg*dep>0)rimmed(()=>{x.beginPath();x.arc(X,Y,1.8,0,2*P)},full);
+      else rimmed(()=>{x.beginPath();x.moveTo(X-4,Y-4);x.lineTo(X+4,Y+4);x.moveTo(X+4,Y-4);x.lineTo(X-4,Y+4)});
+      x.globalAlpha=1}
+    else rimmed(()=>arrowHead(X,Y,sg*p[0]/m,-sg*p[1]/m,z),full)}
+  const[X,Y]=tip(1);word(V,k,X,Y)}
+
+// Its form, in dotted line about the body, as Haeckel drew a form about its organism;
+// turning with the body where the body spins. The egg and the spheroid show their
+// outline, the hull of their parallels seen (both are convex), and their widest parallel.
+// "what's left", the space left to move in, is drawn from the first; "what's right", the
+// form right for the world, waits, but comes with a foundling
+let formOn=false;
+const hull=Q=>{Q=Q.slice().sort((p,q)=>p[0]-q[0]||p[1]-q[1]);const h=[],turnsLeft=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0])>0;
+  for(const s of[Q,Q.slice().reverse()]){const k=h.length;for(const p of s){while(h.length>=k+2&&!turnsLeft(h[h.length-2],h[h.length-1],p))h.pop();h.push(p)}h.pop()}
+  return h};
+// With a foundling not yet placed, the form of what the visitor's world leaves is drawn
+// too, dashed in the glaze, as the visitor's directions are dashed: placing it is making
+// the two one.
+function drawForm(V,R){drawOne(V,now.form,R,[1,4.5],col.ink);if(found&&!now.placed&&now.myForm)drawOne(V,now.myForm,null,[5,4],col.accent)}
+function drawOne(V,f,R,dash,ink){if(!f)return;const pt=p=>at(V,R?mv(R,p):p);
+  x.save();x.setLineDash(dash);x.lineCap="round";x.lineWidth=1.7;x.strokeStyle=ink;x.beginPath();
+  const line=(p,q)=>{x.moveTo(p[0],p[1]);x.lineTo(q[0],q[1])},poly=Q=>{Q.forEach((q,i)=>i?x.lineTo(q[0],q[1]):x.moveTo(q[0],q[1]));x.closePath()};
+  if(f.V)for(const[i,j]of f.E)line(pt(f.V[i]),pt(f.V[j]));
+  else if(f.round=="ball"){x.moveTo(V.cx+f.r*V.s,V.cy);x.arc(V.cx,V.cy,f.r*V.s,0,2*P)}
+  else{// a parallel at t from -1 to 1 along the axis: the egg blunt at t = 1, and widest at
+    // t = sqrt(1.5) - 1, where (1 - t t)(1 + t/4)^2 is greatest
+    const e=across(f.a),egg=f.round=="egg",h=(egg?.85:.72)*f.r,z0=egg?-.1*f.r:0,
+      w=t=>(egg?.82:.9)*f.r*sqrt(max(0,1-t*t))*(egg?1+.25*t:1),ring=t=>ringOf(f.a,e,72,w(t),z0+t*h).map(pt),all=[];
+    for(let k=0;k<=48;k++)all.push(...ring(k/24-1));
+    poly(hull(all));poly(ring(egg?sqrt(1.5)-1:0))}
+  x.stroke();x.restore()}
+
+// Its room (W2o): the directions the body can go by its own strokes, the range of the
+// projector its motion uses, drawn through its middle: a ruled square of the sheet, a line,
+// a ring where it is pinned, or, where every way is open, each view's own plane ruled; and
+// from each crumb a dotted line to its foot there, where the body heads. The pane: the
+// plane a click drops a crumb on, through the middle and square to the view clicked, drawn
+// as it lands and let fade.
+let roomOn=true,pane=null;
+const roomOf=()=>{const P=now.Pv,k=round(P[0]+P[4]+P[8]),C=[0,1,2].map(j=>[P[j],P[3+j],P[6+j]]).sort((a,b)=>len(b)-len(a)),B=[];
+    for(let v of C){if(B.length>=k)break;for(const b of B)v=sub(v,mul(b,dot(v,b)));if(len(v)>1e-6)B.push(unit(v))}
+    return B},
+  // The spaces that fix it (W2q): what an element kept leaves free, by the arrow's law: a
+  // mirror its plane, a turn its axis, any other the middle alone. A few are taken, mirrors
+  // first, then turns by falling order, then the rest, each only if it shrinks the meet of
+  // those before, until the meet is the room: at most three.
+  fixedOf=g=>{const t=g[0]+g[4]+g[8];if(det(g)<0)return abs(t-1)<1e-9?{d:2,v:mirrorNormal(g)}:{d:0};return t>3-1e-9?{d:3}:{d:1,v:turnAxis(g)}},
+  meet=(A,B)=>{if(A.d==3)return B;if(B.d==3)return A;if(!A.d||!B.d)return{d:0};
+    if(A.d==2&&B.d==2){const l=cross(A.v,B.v);return len(l)<1e-6?A:{d:1,v:unit(l)}}
+    if(A.d==1&&B.d==1)return len(cross(A.v,B.v))<1e-6?A:{d:0};
+    const[l,p]=A.d==1?[A,B]:[B,A];return abs(dot(l.v,p.v))<1e-6?l:{d:0}},
+  fixers=()=>{// a ball keeps every turn: any two axes, crossing only at its middle, pin it
+    if(now.G.ball){const F=S.frame;return[turn(mv(F,[1,0,0]),P),turn(mv(F,[0,0,1]),P)]}
+    const k=roomOf().length,els=(now.G.els||[]).slice(),ang=g=>Math.acos(max(-1,min(1,(g[0]+g[4]+g[8]-1)/2))),
+      rank=g=>{const f=fixedOf(g);return f.d==2?0:f.d==1?1+ang(g)/10:3};
+    // (amended) of the first kind that shrinks the meet, the one most
+    // nearly square to it: the sine between two planes, two axes, or an axis and a normal
+    const squareness=(M,f)=>M.d==3?1:M.d==2&&f.d==2||M.d==1&&f.d==1?len(cross(M.v,f.v)):f.d&&M.d?abs(dot(M.v,f.v)):1;
+    let M={d:3};const out=[];
+    while(M.d>k){const C=els.filter(g=>meet(M,fixedOf(g)).d<M.d);if(!C.length)break;const r0=min(...C.map(rank)),top=r0<1?0:r0<3?1:3;
+      const g=C.filter(g=>(rank(g)<1?0:rank(g)<3?1:3)==top&&(top!=1||abs(rank(g)-r0)<1e-9)).reduce((a,b)=>squareness(M,fixedOf(b))>squareness(M,fixedOf(a))+1e-12?b:a);
+      out.push(g);M=meet(M,fixedOf(g))}
+    return out},
+  ruled=(V,u,v,h,m=4)=>{const pt=p=>at(V,p);for(let i=-m;i<=m;i++){const s=h*i/m;
+    for(const[a,b]of[[add(mul(u,s),mul(v,-h)),add(mul(u,s),mul(v,h))],[add(mul(v,s),mul(u,-h)),add(mul(v,s),mul(u,h))]]){const A=pt(a),Bp=pt(b);x.moveTo(A[0],A[1]);x.lineTo(Bp[0],Bp[1])}}};
+function drawRoom(V){const B=roomOf(),h=1.25*now.reach,pt=p=>at(V,p);
+  // the spaces that fix it, dashed and faint: a plane as its square, edges and middle lines
+  x.save();x.strokeStyle=col.ink;x.lineWidth=1;x.globalAlpha=.35;x.setLineDash([3,4]);x.beginPath();
+  for(const g of fixers()){const f=fixedOf(g);
+    if(f.d==2){const u=across(f.v);ruled(V,u,cross(f.v,u),h,1)}
+    else if(f.d==1){const a=pt(mul(f.v,-3*L)),b=pt(mul(f.v,3*L));x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1])}}
+  x.stroke();x.restore();
+  x.save();x.strokeStyle=col.ink;x.lineWidth=1;x.globalAlpha=.4;x.beginPath();
+  if(B.length==2)ruled(V,B[0],B[1],h);
+  else if(B.length==3)ruled(V,V.X,V.Y,h);
+  else if(B.length==1){const a=pt(mul(B[0],-3*L)),b=pt(mul(B[0],3*L));x.moveTo(a[0],a[1]);x.lineTo(b[0],b[1])}
+  x.stroke();
+  // pinned: a ring at the middle, on a ring of paper so that it reads over the body
+  if(!B.length){const[X,Y]=pt([0,0,0]);x.globalAlpha=1;for(const[w,s]of[[5,col.paper],[1.6,col.ink]]){x.lineWidth=w;x.strokeStyle=s;x.beginPath();x.arc(X,Y,7,0,2*P);x.stroke()}}x.globalAlpha=.9;x.strokeStyle=col.accent;x.setLineDash([2,3]);x.beginPath();
+  for(const b of crumbs){const A=pt(b.p),F=pt(mv(now.Pv,b.p));x.moveTo(A[0],A[1]);x.lineTo(F[0],F[1])}
+  x.stroke();x.setLineDash([]);x.beginPath();for(const b of crumbs){const[X,Y]=pt(mv(now.Pv,b.p));x.rect(X-2.5,Y-2.5,5,5)}x.stroke();x.restore()}
+function drawPane(V){if(!pane)return;const k=(performance.now()-pane.t)/1200;if(k>=1&&!calm){pane=null;return}
+  x.save();x.strokeStyle=col.ink;x.lineWidth=1;x.globalAlpha=.45*(calm?1:1-ease(min(1,k)));x.beginPath();ruled(V,pane.X,pane.Y,pane.h);x.stroke();x.restore()}
+
+// One frame of every view: the glaze's wash for ground, the directions' shafts, the body
+// and the specks, the heads; the cameras' marks on the plan. A spinning body is drawn
+// again each frame, turned.
+function draw(){x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,CW,CH);
+  // under reduced motion the pane is drawn once, and gone at the next drawing
+  if(pane&&calm&&pane.shown)pane=null;if(pane&&calm)pane.shown=1;
+  const R=now.dirs.spin&&spun?turn(now.dirs.spin,spun):null,
+    redo=!shaped||bending()||R&&!now.G.ball&&!(now.G.name.includes("inf")),
+    parts=(Q=>bending()?Q.map(q=>bendPart(q,now.dirs.forward,bendN,.5*bent)):Q)(R&&redo?now.body.map(q=>act(R,q)):now.body);
+  for(const V of VIEWS){const[x0,y0,side]=V.r;
+    x.save();x.beginPath();x.rect(x0,y0,side,side);x.clip();
+    x.fillStyle=col.paper;x.fillRect(x0,y0,side,side);
+    x.strokeStyle=col.rule;x.lineWidth=1;x.strokeRect(x0+.5,y0+.5,side-1,side-1);
+    for(const k in shown())direction(V,k,false);
+    if(gl)glView(V,parts,redo,R);
+    else{if(redo)silhouette(V,parts);
+      const dots=front=>{x.fillStyle=col.ink;for(const b of specks){const d=dot(V.D,b.p);if(front!=(d>now.reach))continue;
+        x.globalAlpha=min(1,(sim-b.t)/400)*.6;const[X,Y]=at(V,b.p);x.beginPath();x.arc(X,Y,1.5*b.s,0,2*P);x.fill()}x.globalAlpha=1;
+        x.fillStyle=col.accent;for(const b of crumbs){if(front!=(dot(V.D,b.p)>now.reach))continue;const[X,Y]=at(V,b.p);x.beginPath();x.arc(X,Y,3.3,0,2*P);x.fill()}};
+      dots(false);x.drawImage(V.o,x0,y0,side,side);dots(true);
+      // without WebGL, the eyes on the camera's side of the middle, flat
+      for(const q of eyeParts(R)){if(dot(V.D,q.c)<0)continue;const[X,Y]=at(V,q.c);
+        x.fillStyle="rgb("+(q.tint>2?col.per.slice(3*q.tint-9,3*q.tint-6):q.tint>1?col.pupil:col.gloss).map(v=>round(v*255))+")";x.beginPath();x.arc(X,Y,q.ax[0]*V.s,0,2*P);x.fill()}}
+    if(formOn)drawForm(V,R);
+    if(roomOn)drawRoom(V);drawPane(V);
+    placed=[];x.fillStyle=col.base;x.font=col.font;
+    if(V.tag){x.fillText(V.tag,x0+8,y0+16);placed.push([x0+8,y0+16,8])}
+    else{// where a and b look from: a short line on the side each looks from, and its letter
+      x.strokeStyle=col.base;x.lineWidth=1.2;x.beginPath();x.moveTo(x0+side-3,V.cy+10);x.lineTo(x0+side-3,V.cy+38);x.moveTo(V.cx-38,y0+side-3);x.lineTo(V.cx-10,y0+side-3);x.stroke();
+      x.fillText("a",x0+side-13,V.cy+52);x.fillText("b",V.cx-52,y0+side-7);placed.push([x0+side-13,V.cy+52,8],[V.cx-52,y0+side-7,8])}
+    for(const k in shown())direction(V,k,true);
+    x.restore()}
+  // a change of theme or glaze: the drawing as it was, laid over the new one and let go
+  if(old){const k=(performance.now()-t0)/500;if(k>=1||calm||old.width!=c.width||old.height!=c.height)old=null;
+    else{x.setTransform(1,0,0,1,0,0);x.globalAlpha=1-ease(k);x.drawImage(old,0,0);x.globalAlpha=1}}
+  // square is offered only while the cameras are not square
+  $("square").hidden=!sq&&squared().every((v,i)=>abs(v-cam[i])<1e-6);
+  shaped=1}
+// the curve the page's own colours fade along, CSS's "ease": cubic-bezier(.25,.1,.25,1)
+function ease(k){let a=0,b=1,s;for(let i=0;i<20;i++){s=(a+b)/2;.75*s*(1-s)+s*s*s<k?a=s:b=s}return s*(.3*(1-s)*(1-s)+3*s*(1-s)+s*s)}
+let old=null,t0=0;
+
+// Time: fixed steps of 1/240 s; with reduced motion nothing moves, and the page draws
+// only when something changes.
+let last=null,acc=0,running=false;
+function frame(t){if(last==null)last=t;acc+=min(250,t-last);last=t;while(acc>=STEP){step();acc-=STEP}squaring();draw();
+  if(!calm)requestAnimationFrame(frame);else{running=false;last=null}}
+function wake(){if(!running){running=true;requestAnimationFrame(frame)}}
+
+// Holding a direction by its head turns it as on a ball under the pointer; holding the
+// body turns its fragment, as a kaleidoscope is turned; holding the ground turns the
+// cameras about the middle, all three together, the drawing following the pointer.
+let grip=null;
+// whether the body is under the pointer: along the line of sight, its parts; for a turned
+// body, its profile; for the ball, the ball
+const overBody=(V,X,Y)=>{const a=(X-V.cx)/V.s,b=(V.cy-Y)/V.s,r=now.reach;
+  if(now.G.ball)return a*a+b*b<r*r;
+  const o=add(add(mul(V.X,a),mul(V.Y,b)),mul(V.D,5));
+  if(turned()){const f=now.rev||(now.rev=profile()),ax=now.G.axis;
+    for(let t=5-f.R;t<5+f.R;t+=.004){const p=add(o,mul(V.D,-t)),z=dot(p,ax),i=len(sub(p,mul(ax,z)))/f.R*f.NR|0,j=Math.floor((z/f.R+1)/2*f.NZ);
+      if(i<f.NR&&j>=0&&j<f.NZ&&f.d[j*f.NR+i]<0)return true}
+    return false}
+  const R=spinNow(),B=R?tr(R):I3;return!!hit(mv(B,o),mv(B,mul(V.D,-1)),now.body)};
+const viewAt=(X,Y)=>VIEWS.find(V=>X>=V.r[0]&&X<=V.r[0]+V.r[2]&&Y>=V.r[1]&&Y<=V.r[1]+V.r[2]);
+const local=e=>{const b=c.getBoundingClientRect();return[e.clientX-b.left,e.clientY-b.top]};
+c.addEventListener("pointerdown",e=>{const[X,Y]=local(e),V=viewAt(X,Y);if(!V)return;c.setPointerCapture(e.pointerId);
+  // a head is held within 16 pixels of it, a spin anywhere on or within its ring; and where
+  // it was held is kept, so it does not jump to the pointer
+  let best=null,bd=0;for(const k in shown())for(const[v,r,sg]of heads(V,k)){const[a,b]=at(V,mul(v,r)),d=Math.hypot(a-X,b-Y)-(k=="spin"?.16*V.s+10:16);
+    if(d<bd){bd=d;best={k,V,sg,off:[X-a,Y-b]}}}
+  // an eye, held, is carried over the body; of two under the pointer, the nearer the camera
+  if(!best){const R=spinNow();let dep=-9;for(let p of now.eyes){if(R)p=mv(R,p);const[a,b]=at(V,p),z=dot(V.D,p);if(Math.hypot(a-X,b-Y)<13&&z>dep){dep=z;best={V,eye:1}}}}
+  // the eye that goes all round is held anywhere along it (found on a ball of the body's reach)
+  if(!best&&now.ring){const q=onBall(V,X,Y),a=now.G.axis,t=atan2(now.ring[0],now.ring[1]);
+    if(q){const c=Math.acos(max(-1,min(1,dot(unit(q),a))));if(abs(c-t)<.13||now.ring[2]&&abs(P-c-t)<.13)best={V,eye:1}}}
+  grip=best||(overBody(V,X,Y)?{V,turn:[X,Y]}:{V,cam:[X,Y]});grip.o=[X,Y]});
+// the point of a ball of the body's reach under the pointer, on the camera's side
+const onBall=(V,X,Y)=>{const a=(X-V.cx)/V.s,b=(V.cy-Y)/V.s,r=now.reach,k=r*r-a*a-b*b;return k>0?add(add(mul(V.X,a),mul(V.Y,b)),mul(V.D,sqrt(k))):null};
+const spinNow=()=>now.dirs.spin&&spun?turn(now.dirs.spin,spun):null;
+c.addEventListener("pointerleave",()=>{gazeT=null;if(calm)draw()});
+c.addEventListener("pointermove",e=>{const[X,Y]=local(e),V=grip?grip.V:viewAt(X,Y);
+  // the eyes look toward the pointer, held before the view it is in
+  if(V){gazeT=add(add(mul(V.X,(X-V.cx)/V.s),mul(V.Y,(V.cy-Y)/V.s)),mul(V.D,2.5));if(!grip&&calm)draw()}
+  if(!grip)return;
+  if(Math.hypot(X-grip.o[0],Y-grip.o[1])>4)grip.moved=1;
+  if(grip.cam){const dx=X-grip.cam[0],dy=Y-grip.cam[1];grip.cam=[X,Y];
+    sq=null;cam=mm(mm(turn(V.X,-dy/V.s),turn(V.Y,-dx/V.s)),cam);aim();shaped=0;draw();return}
+  if(grip.eye&&turned()){const q=onBall(V,X,Y);if(q){eyeDir=unit(q);eyes();tell();draw()}return}
+  if(grip.eye){const R=spinNow(),B=R?tr(R):I3,o=add(add(mul(V.X,(X-V.cx)/V.s),mul(V.Y,(V.cy-Y)/V.s)),mul(V.D,5)),q=hit(mv(B,o),mv(B,mul(V.D,-1)),now.body);
+    if(q){eyeDir=unit(q);eyes();tell();draw()}return}
+  if(grip.k){const r=REACH[grip.k],a=(X-grip.off[0]-V.cx)/V.s/r,b=(V.cy-Y+grip.off[1])/V.s/r,m=Math.hypot(a,b),v=raw[grip.k],
+      dep=(dot(V.D,v)*grip.sg<0?-1:1);
+    const q=m>=1?add(mul(V.X,a/m),mul(V.Y,b/m)):add(add(mul(V.X,a),mul(V.Y,b)),mul(V.D,dep*sqrt(1-m*m)));
+    raw[grip.k]=mul(q,grip.sg)}
+  else{const dx=X-grip.turn[0],dy=Y-grip.turn[1];grip.turn=[X,Y];pose=mm(mm(turn(V.Y,dx/V.s),turn(V.X,dy/V.s)),pose)}
+  solve();wake();draw()});
+// a click on the ground or the body, not a drag, drops a crumb there, on the pane: the
+// plane through the middle square to the view clicked, drawn wide enough to hold it
+const drop=(V,X,Y)=>{const a=(X-V.cx)/V.s,b=(V.cy-Y)/V.s;crumbs.push({p:add(mul(V.X,a),mul(V.Y,b))});if(crumbs.length>12)crumbs.shift();
+  pane={X:V.X,Y:V.Y,D:V.D,h:max(1.25*now.reach,max(abs(a),abs(b))+.15),t:performance.now()};wake();if(calm)draw()};
+c.addEventListener("pointerup",e=>{if(grip&&!grip.moved&&(grip.turn||grip.cam)){const[X,Y]=local(e);drop(grip.V,X,Y)}
+  // a direction let go is set, and a foundling is judged
+  const set=grip&&grip.k;grip=null;if(set){solve();wake();draw()}});
+c.addEventListener("keydown",e=>{const a={ArrowLeft:[[0,0,1],-1],ArrowRight:[[0,0,1],1],ArrowUp:[[1,0,0],-1],ArrowDown:[[1,0,0],1]}[e.key];
+  if(!a)return;e.preventDefault();pose=mm(turn(a[0],a[1]*P/360),pose);solve();draw()});
+
+// The buttons: the parts the body takes where the world leaves a circle; another body;
+// the world's four directions, each on or off, and turned by the arrow keys while held.
+[...$("parts").children].forEach((b,i)=>b.onclick=()=>{n=[2,3,4,5,6,Infinity][i];
+  for(const o of $("parts").children)o.setAttribute("aria-pressed",o==b);solve();draw()});
+$("form").onclick=e=>{formOn=!formOn;e.target.setAttribute("aria-pressed",formOn);draw()};
+$("room").onclick=e=>{roomOn=!roomOn;e.target.setAttribute("aria-pressed",roomOn);draw()};
+$("square").onclick=square;
+// "another body": in free play, a body for the visitor's world; in find match, a new
+// foundling, its world to be found. A foundling comes with its form drawn, where its axes
+// and mirrors are to be found; back in free play, its fragment is a body of the visitor's
+// world.
+let finding=false;
+const fresh=()=>{foundling();formOn=true;$("form").setAttribute("aria-pressed",true)};
+// In a world that leaves one mirror, one time in three (chosen) a beast comes, either equally.
+const another=()=>{if(finding)fresh();else{const cs=!found&&shapeOf(now.G)=="Cs";found=null;S=seed(random()*4294967296>>>0);pose=I3;
+  if(cs&&random()<1/3)S.beast=BEASTS[random()*BEASTS.length|0]}solve();wake();draw()};
+$("again").onclick=another;
+// the two modes, on a row of their own, one always pressed: free play,
+// the visitor's world making the body; and find match, a foundling's world to be found
+[...$("mode").children].forEach((b,i)=>b.onclick=()=>{const f=i==1;if(f==finding)return;finding=f;
+  [...$("mode").children].forEach((o,j)=>o.setAttribute("aria-pressed",(j==1)==f));if(f)fresh();else found=null;solve();wake();draw()});
+[...$("world").children].forEach(b=>{const k=b.textContent;
+  b.onclick=()=>{on[k]=on[k]?0:1;b.setAttribute("aria-pressed",!!on[k]);solve();wake();draw()};
+  b.onkeydown=e=>{const t={ArrowLeft:-1,ArrowRight:1,ArrowUp:-1,ArrowDown:1}[e.key];if(!t)return;e.preventDefault();
+    const v=raw[k],h=/Left|Right/.test(e.key)?[0,0,1]:len(cross(v,[0,0,1]))>EPS?unit(cross([0,0,1],v)):[1,0,0];
+    raw[k]=mv(turn(h,t*P/360),v);if(!on[k]){on[k]=1;b.setAttribute("aria-pressed",true)}solve();wake();draw()}});
+
+// What is here, and what is left of every turn and mirror.
+const NAMES={Kh:"Every turn and every mirror is left.",Cs:"One mirror is left.",C1:"Nothing is left.",Ci:"Only the turn through the middle is left.",
+  C2v:"Two mirrors and a half turn are left.",C2h:"A half turn and the mirror across it are left.",C2:"A half turn is left.",D2:"Three half turns are left.",D2h:"Three mirrors and three half turns are left."};
+// Haeckel's names (Generelle Morphologie, 1866, vol. I: Table II, and chapter XIII's
+// contents), each for the figure whose symmetry is exactly the shape drawn: a turned body's
+// shape keeps the mirrors a spin did not give. Every figure of his with a turn has a mirror
+// through its axis, and none has only the turn through the middle; for those he has no place.
+const HAECKEL={Kh:"Homaxonia|Sphaerozoum",Td:"Tetraedra|Corydalis-Pollen",Oh:"Hexaedra|Hexaedromma",Ih:"Icosaedra|Aulosphaera-icosaedra",
+    D2h:"Allostaura octopleura|Stephanastrum",D4h:"Isostaura octopleura|Acanthostaurus",D3h:"Isostaura polypleura|Heliodiscus",
+    D5h:"Isostaura polypleura|Heliodiscus",D6h:"Isostaura polypleura|Heliodiscus",Dinfh:"Haplopola anepipeda|Coccodiscus",
+    C2v:"Diphragma|Petalospyris",C3v:"Triactinota|Iris",C4v:"Tetractinota|Aurelia",C5v:"Pentactinota|Ophiura",C6v:"Hexactinota|Carmarina",
+    Cinfv:"Diplopola anepipeda|Ovulina",Cs:"Eudipleura|Homo",C1:"Dysdipleura|Pleuronectes"},
+  kindLine=(G=now.G)=>{const h=HAECKEL[shapeOf(G)];if(!h)return"<i>incertae sedis</i>";const[a,b]=h.split("|");return"<i>"+a+"</i>, "+b+"-Form"};
+// A foundling not placed is of uncertain placement, and named so; placed, it is a body.
+// What is left is what the visitor's world leaves.
+function tell(){const k=Object.keys(now.dirs),ne=now.eyes?now.eyes.length:0,lost=found&&!now.placed;
+  // bent, it is what it then is
+  $("kind").innerHTML=lost?"<i>incertae sedis</i>":kindLine(bending()?{name:named(bendGroup(now.G,now.dirs.forward,bendN))}:now.G);
+  // a turned body mirrored across its middle has two eyes all round, one each side, but
+  // one where the eye is on the mirror
+  const rings=now.ring?now.ring[2]&&abs(now.ring[1])>1e-3?"two eyes all round":"an eye all round":0;
+  // a foundling's world is not known, so its line names none; placed, the world the visitor
+  // made is its world. Till then the visitor's directions are guesses, and look it.
+  $("what").textContent=[lost?"a foundling":now.beast?now.beast.name:"a body",...(now.all?["all eye"]:rings?[rings]:ne?[ne+(ne>1?" eyes":" eye")]:[]),...(lost?[]:k)].join(", ");
+  $("nav").className=lost?"guess":"";
+  $("line").textContent=lost?"Match its form.":"Pick one.";
+  const t=$("tally"),tl=[homed?homed+" placed.":"",eaten?eaten+" eaten.":""].filter(Boolean).join(" ");t.textContent=tl;t.hidden=!tl;
+  const nm=now.st.type=="finite"||now.st.type=="Kh"&&n==Infinity?now.st.name:now.mine.name;
+  $("s").textContent=(now.beast?now.beast.name.replace(/^./,v=>v.toUpperCase())+". ":"")+(k.length?k.join(" and ").replace(/^./,v=>v.toUpperCase())+". ":"Nothing is given. ")+(NAMES[nm]||nm+" is left.")+(found&&now.placed?" Placed.":"")}
+
+// theme: the system's, until the visitor turns it; nothing is kept. It fades over half a
+// second, as the house's colours do: the drawing keeps a copy of itself to fade from.
+const sys=matchMedia("(prefers-color-scheme: dark)"),T=$("theme"),root=document.documentElement,
+  dark=()=>root.dataset.theme?root.dataset.theme=="dark":sys.matches,
+  turnT=()=>T.textContent=dark()?"light":"dark",
+  recolour=()=>{old=document.createElement("canvas");old.width=c.width;old.height=c.height;
+    old.getContext("2d").drawImage(c,0,0);t0=performance.now();colours();shaped=0;draw();wake()};
+sys.addEventListener("change",()=>{if(!root.dataset.theme){turnT();recolour()}});
+T.onclick=()=>{root.dataset.theme=dark()?"light":"dark";turnT();recolour()};
+turnT();T.hidden=false;
+// glaze: celadon, jun, tenmoku, and round again; the dot wears the middle glaze of the
+// family to come, and is named for it; nothing is kept
+const D=$("glaze"),tint=()=>{const[nm,F]=FAMS[(fi+1)%3];D.style.background="var(--"+F[1]+"-base)";D.setAttribute("aria-label",nm)};
+D.onclick=()=>{fi=(fi+1)%3;const m=FAMS[fi][1][1];root.style.setProperty("--g-base","var(--"+m+"-base)");
+  root.style.setProperty("--g-accent","var(--"+m+"-accent)");tint();recolour()};
+tint();D.hidden=false;
+
+addEventListener("resize",()=>{size();draw()});
+glUp();size();solve();draw();wake();
+// the page's own size: it asks for itself and counts what comes back
+fetch(location.pathname).then(r=>r.arrayBuffer()).then(b=>$("self").textContent=b.byteLength.toLocaleString("en-US"));
+// the Greek for left, and what it says
+console.log(String.fromCharCode(7936,961,953,963,964,949,961,972,962)+": the better one.");
+</script>
+</body>
+</html>

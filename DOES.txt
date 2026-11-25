@@ -1,0 +1,156 @@
+What whatsleftisright.com does. A golf pass must keep every line true.
+
+ 1. A plan, from above, and two elevations, from the sides: cameras a and b, each
+    a short line and a letter on the plan's edge, a looking from +x and b from -y
+    at first. Each view shows the space within 1.55 of the middle; lengths are in
+    a body's reach, about 1. Holding the ground turns all three about the middle
+    together, following the pointer, so they stay a plan and two elevations of
+    each other.
+ 2. The world holds at most one each of four directions, each on or off by its
+    button and turned by dragging its head (a spin anywhere on or within its ring),
+    or by the arrow keys while its button has the focus (half a degree a press):
+    down and forward, arrows; a spin, turning one way about its axis; a stretch,
+    pulling both ways along its axis.
+    A direction within a degree of lying along, against or across one before it
+    is set so.
+ 3. What is left is every turn and mirror that keeps each direction by its kind's
+    law: an arrow, g v = v; a spin, det(g) g v = v; a stretch, g v = v or -v. With
+    all on one axis it is a whole circle of turns, with or without the mirrors
+    through the axis and across it; with nothing given, every turn and mirror.
+ 4. Where the world leaves a circle, the body takes 2, 3, 4, 5 or 6 of it, by the
+    buttons (the chosen one pressed), or all of it (the sign for infinity),
+    turned as a lathe turns. With nothing given, 2 and 6 take an axis of the
+    body's own with its mirrors, 3 a tetrahedron's turns and mirrors, 4 a cube's,
+    5 an icosahedron's; infinity, a ball.
+ 5. The body is a fragment and every copy of it under what is left: drawn, not
+    grown. The fragment is new on every visit and on "another body": a core, an
+    ellipsoid each of whose semi-axes is at least a quarter longer than the next,
+    holding the body's middle but never centred on it (its centre is at least a
+    third of its smallest semi-axis away); two to four limbs, each an arm of three or four round cones bending one way
+    as it narrows, or, one time in four, a spine, straight to a near point; and up
+    to two lumps, a fin or a pod. A group of more than 6 turns and mirrors copies
+    only the first two limbs, and one of 24 or more (or turned) only the first,
+    with the lumps on them. Every part after the core starts inside a part before
+    it, so the body is one piece. Dragging the body, or the arrow keys on the drawing,
+    turns its fragment. A turned body is drawn from its exact profile about its
+    axis.
+ 6. Its eyes: one point of the fragment, where a line toward the middle first
+    meets it, and every copy of that point; as many eyes as there are turns and
+    mirrors, fewer where some leave an eye where it is. An eye within 4 degrees
+    of an axis or a mirror is set on it (10 while held), and on an axis wears
+    that axis's glaze: two turns gold, three Longquan, four Jun splash, five
+    crimson, six Jun blue. A turned body has an eye all round, or two where it is
+    mirrored across its middle; the ball is all eye. No eye is wider than 0.85 of
+    the part it is on. Eyes look toward the pointer, at most 55 degrees aside.
+    Holding an eye carries it over the body.
+ 7. The tab's title is "Which way is down?". The label's second line says what is
+    here; the third gives Haeckel's name for its figure (Generelle Morphologie,
+    1866, vol. I, Table II and the contents of chapter XIII), its category and
+    real type ("Eudipleura, Homo-Form"), for the shape as drawn, or, where his
+    figures have no place for it, "incertae sedis". The label gives the page's
+    own size, read live, and one line.
+ 8. "what's right" draws, in dotted line, a plain solid whose symmetry is exactly the
+    body's, after Haeckel's figures: a pyramid, a double pyramid, a regular solid,
+    a three-sided pyramid; for a turned body his egg or spheroid; where he has no
+    form, a ratchet's.
+ 9. The medium is specks carried by idealised flows, the same in every view:
+    down, they rise past the body at 0.25 a second; forward, they stream back at
+    0.5; a spin turns body and medium together once in 12 seconds; a stretch is
+    pure strain, 0.3 a second along it. With nothing given they wander. These
+    rates are chosen, not measured. Motion is worked in fixed steps of 1/240 s;
+    with reduced motion nothing moves.
+10. The first row holds the two modes, one always pressed: "free play", where the
+    visitor's world makes the body, and "find match". In find match, "another body"
+    brings a foundling (and choosing find match brings one at once; back in free
+    play, its fragment becomes a body of the visitor's world): a body made in a
+    world the page does not draw, with parts
+    of its own: each direction there with chance a half, along an axis of a frame
+    of its own (three times in four) or slantwise (once in four), either way
+    round; the first of a visit, down alone. The visitor's directions go off but
+    down, and "what's right" comes on. It is placed while what the visitor's world
+    leaves, at its parts and in its frame, is exactly its shape, judged when a
+    direction is let go, not while it is held: then the label
+    says "a body", gives Haeckel's name, and counts the foundlings placed this
+    visit. Until then the label says "a foundling", "incertae sedis" and "Match
+    its form."; beside its form, dotted, the form of what the visitor's world
+    leaves is drawn dashed in the glaze, each from its group alone in the body's
+    own frame, so that the two are one exactly when it is placed; the visitor's
+    directions have dashed shafts and dotted buttons; a head is open where the
+    foundling breaks its direction and filled where it keeps it; and a direction
+    within 6 degrees of one the foundling keeps is set on it.
+11. The bodies are engraved, lit from the upper left: lines across each part's
+    form, 4.5 page pixels apart, covering more of the paper as the light leaves
+    it, at most 46 in 100, and a second set across them past two thirds of shade;
+    an outline about a pixel wide where the surface turns away, and a line where
+    two parts meet; under them a wash of the body's glaze. Without WebGL 2 the
+    body is drawn in silhouette.
+12. Colours come from the house tokens: paper behind each view, the body washed
+    in its glaze. A dot after the theme button turns the glazes through three
+    families. Eyes keep their colours in either theme. Dark mode follows the
+    system until the theme button turns it for the visit; nothing is kept.
+13. On a full screen the page is seen whole without scrolling: the label beneath
+    the drawing, or beside it where that leaves the drawing larger.
+14. A screen reader hears the world and what it leaves ("Down and forward. One
+    mirror is left."), and "Placed." while a foundling is.
+15. A click on the drawing, not a drag, drops a crumb there, at the middle's depth
+    (at most 12). The flows carry it as they carry the specks. The body goes for
+    the nearest crumb by its own strokes, which share its symmetry, so only along
+    the directions its group keeps (as Curie has it): any way, within its mirror,
+    along its axis, or not at all; at 0.3 a second (chosen), slowing within 0.015
+    of where it can come nearest. The body stays in the middle and the rest moves
+    past it. A crumb within 0.02 of it is eaten, and a line under the label counts
+    what is eaten this visit, beside the foundlings placed.
+17. A body going forward turns for a crumb it cannot reach, or that has fallen
+    behind it, since the stream outruns its stroke: the least turn that brings the
+    crumb ahead of it and within reach, at 60 degrees a second (chosen), about down,
+    or about the spin's or the stretch's axis if down is not given, or about any
+    axis if none is. With the medium's directions on different axes it does not
+    turn. Going 0.5 a second and turning 60 degrees a second, it turns on a circle
+    of radius 0.48, and nothing inside that circle can be reached by turning:
+    for a crumb there it goes on straight until the stream has carried the crumb
+    out to one and a half times as far from the circle's centre (chosen), then
+    turns. While it turns it strokes only along the turn's axis, where its symmetry
+    lets it, so that the circle stays the one reckoned, climbing or sinking to the
+    crumb meanwhile. A turn about an axis its group keeps, as a spin is kept, moves
+    with every turn and mirror the body has, so it carries the directions the body
+    can go onto themselves and brings no crumb nearer. Every turn it makes is
+    therefore one its symmetry forbids, and it bends while it turns: each point
+    moved toward the turn by half the square of its distance along forward
+    (chosen), the label naming the symmetry the bent body keeps. A turned body,
+    drawn whole, and a foundling do not turn.
+18. In a world that leaves just one mirror, "another body" brings, one time in three
+    (chosen), a beast from the bestiaries instead, the elephant or the hedgehog
+    equally, made of the same parts as a body and mirrored: the elephant after the
+    Rochester Bestiary (British Library, Royal MS 12 F XIII, f. 11v, about 1230),
+    its legs straight, since the Physiologus says it has no joints in its knees,
+    with the wooden tower the bestiary says the Persians and Indians fight from,
+    square, of logs, on a cloth; the
+    hedgehog after the Aberdeen Bestiary (MS 24, f. 24r, about 1200), with its long
+    open snout and the grapes it rolled on in a row along its back, on a dome of
+    spines set along its surface's outward way and tipped back toward the tail. Its mirror is set on the world's,
+    its feet against down and its head forward. While the world leaves just one
+    mirror it stays; otherwise the body beneath it is drawn, and it is back when the
+    world is.
+19. "what's left", pressed from the first, draws, through the body's middle in every view, the directions its
+    own strokes can take it: those every turn and mirror it keeps leaves where they
+    are, the same space its motion is confined to. Where it keeps one mirror that is
+    the mirror, drawn as a ruled square; an axis, a line; nothing, so that it is
+    pinned, a ring at the middle; and where it keeps nothing, every way, so every
+    view is ruled. Beneath it, dashed, are the spaces a few of the turns and mirrors
+    it keeps leave free, each a mirror's plane or a turn's axis, taken until where
+    they all meet is that space, each the most nearly square to those before that
+    the body has (two mirrors of a fourfold body square, of a threefold at 60
+    degrees): a pinned body shows them crossing at its middle. A
+    turn-and-mirror, or the turn through the middle, leaves only the middle free,
+    and has no space to draw. From each crumb a dotted line runs to its foot there,
+    where the body heads. A crumb is dropped on the plane through the middle square to the view
+    clicked, and that plane is drawn as it lands, fading over 1.2 seconds (chosen).
+20. While the views are turned off square, "square" stands in the plan's corner and
+    turns them back, over 0.6 seconds (chosen): the plan looking along down where
+    down is given, else along the axis of the most turns the body keeps, and its
+    right along forward where forward is given, else along a mirror, so that b sees
+    that mirror face-on.
+16. The favicon is two eyes, each looking out its own side. The console gives the
+    Greek word for left, aristeros, and what it says: the better one. That is the
+    standard account, from aristos, best, the left called the better to avert its
+    omen; Beekes calls the deeper root uncertain. The 404 says nothing is left.
