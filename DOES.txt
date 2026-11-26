@@ -70,9 +70,9 @@ What whatsleftisright.com does. A golf pass must keep every line true.
     of its own: each direction there with chance a half, along an axis of a frame
     of its own (three times in four) or slantwise (once in four), either way
     round; the first of a visit, down alone. The visitor's directions go off but
-    down, and "what's right" comes on. It is placed while what the visitor's world
-    leaves, at its parts and in its frame, is exactly its shape, judged when a
-    direction is let go, not while it is held: then the label
+    down, "what's right" comes on and "what's left" goes off. It is placed while
+    what the visitor's world leaves, at its parts and in its frame, is exactly its
+    shape, judged when a direction is let go, not while it is held: then the label
     says "a body", gives Haeckel's name, and counts the foundlings placed this
     visit. Until then the label says "a foundling", "incertae sedis" and "Match
     its form."; beside its form, dotted, the form of what the visitor's world
@@ -80,7 +80,10 @@ What whatsleftisright.com does. A golf pass must keep every line true.
     own frame, so that the two are one exactly when it is placed; the visitor's
     directions have dashed shafts and dotted buttons; a head is open where the
     foundling breaks its direction and filled where it keeps it; and a direction
-    within 6 degrees of one the foundling keeps is set on it.
+    within 6 degrees of one the foundling keeps is set on it. Until it is placed,
+    down has no weight on it and no ground is drawn: its own down is not shown, and
+    the visitor's is a guess. Placed, the world the visitor made is its world, and
+    it stands on the ground its parts give there.
 11. The bodies are engraved, lit from the upper left: lines across each part's
     form, 4.5 page pixels apart, covering more of the paper as the light leaves
     it, at most 46 in 100, and a second set across them past two thirds of shade;
@@ -191,7 +194,28 @@ What whatsleftisright.com does. A golf pass must keep every line true.
     icosahedron are not figured; Haeckel's Report on the Radiolaria finds those
     ground-forms in Tetraplagia, Centrocubus and Circogonia. A creature of turns and
     mirrors is its group's copies of one piece, as a body is, but the piece is drawn
-    from the plate.
+    from the plate. Where turns are left and no mirror through them, Haeckel's
+    figures have no place, and the label says "incertae sedis"; three such creatures
+    come all the same. With four turns, as a spin along down leaves them, the moon
+    jelly as he drew it, each arm running out and curling about 66 degrees round.
+    With five, the periwinkle, Vinca minor, after Thome's Flora von Deutschland,
+    Oesterreich und der Schweiz (Gera, 1885), the plate numbered 542: the flower
+    face up on its stalk, its tube with the sepals at its foot, the pale five-angled
+    throat and the stigma in it, and five broad lobes joined at the throat, each cut
+    slantwise, the broad end turned one way round as the plate's open flower has it;
+    its leaves, in pairs along trailing stems, keep no five turns, and are left out.
+    Which way the arms and the lobes turn is the world's (chosen): they trail the
+    spin, so in the world's mirror image they turn the other way. With a half turn
+    and the mirror across it, as a spin alone leaves at two, the diatom Pleurosigma
+    quadratum, after W. Smith's A Synopsis of the British Diatomaceae (1853), plate
+    XX, figure 204: a flat frustule, rhombic, its ends leaning opposite ways, with its
+    median line and its nodules at the middle and the ends. Its two valves nest, so
+    the mirror across them keeps it; turned over it is its own mirror image, and has
+    no hand to follow. Where a stretch crosses the spin it lies along the stretch
+    (chosen), as a tide draws a rod out. The other worlds of turns without mirrors
+    through them (two, three or six turns about an arrow; three to six turns with
+    the mirror across them; the turn through the middle alone) draw the body: no
+    figure has been found that keeps exactly their turns.
 19. "what's left", pressed from the first, draws, through the body's middle in every view, the directions its
     own strokes can take it: those every turn and mirror it keeps leaves where they
     are, the same space its motion is confined to. Where it keeps one mirror that is
@@ -215,10 +239,11 @@ What whatsleftisright.com does. A golf pass must keep every line true.
     goes as above. Else a body whose lowest point is on a limb has legs, and jumps;
     else it walks. The elephant walks, as elephants cannot jump and the Physiologus
     gives it no knees; the hedgehog jumps; the brittle star, the flounder and the
-    foraminifer walk; the medusae swim and the radiolarians and the colony drift, as
-    fliers do. The iris is rooted: it never goes, turns or leaps, in any world,
-    and eats what reaches it; with forward alone the stream goes past it, as a river
-    past a reed. A jumper, a walker or a rooted creature stands on the ground
+    foraminifer walk; the medusae swim and the radiolarians, the colony and the
+    diatom drift, as fliers do. The iris and the periwinkle are rooted: they never
+    go, turn or leap,
+    in any world, and eat what reaches them; with forward alone the stream goes past
+    them, as a river past a reed. A jumper, a walker or a rooted creature stands on the ground
     through its lowest point, drawn ruled, moving under it as it goes: it strokes
     only across down, and not while it turns. What falls to the ground lies there,
     and moves with the ground; snow that reaches it is gone. A crumb clicked under the

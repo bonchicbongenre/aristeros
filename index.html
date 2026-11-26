@@ -37,6 +37,7 @@ nav.guess #world button[aria-pressed=true]{text-decoration-style:dotted}
 #look #glaze{top:0}
 .label{margin-top:2rem}
 .label p{margin:0;line-height:1.35}
+#after a{white-space:nowrap}
 .label .l{margin-top:.5rem}
 .t{font-size:1.1rem}
 .m{font-variant-caps:all-small-caps;letter-spacing:.04em}
@@ -356,17 +357,55 @@ const MIRROR=[1,0,0,0,-1,0,0,0,1],rotY=t=>turn([0,1,0],t*P/180),rotX=t=>turn([1,
   // horseshoe gonads on the diagonals; four oral arms on the cross, frilled, which Haeckel
   // draws curling the one way round (without mirrors), and which hang here in their mirror
   // planes; and an eyespot on each of the eight sense organs at the margin's notches
-  aurelia=(()=>{const piece=[egg([0,0,0],[.5,.5,.12],I3,{disc:1}),egg([.47*cos(P/8),.47*sin(P/8),-.02],[.1,.07,.05],rotZ(22.5))];
-    for(let i=0;i<6;i++){const t=(3.75+7.5*i)*P/180,b=[.47*cos(t),.47*sin(t),-.04];piece.push(limbOf(b,add(b,[.08*cos(t),.08*sin(t),-.14]),.006,.002))}
+  [aurelia,aureliaC4]=(()=>{const bell=[egg([0,0,0],[.5,.5,.12],I3,{disc:1}),egg([.47*cos(P/8),.47*sin(P/8),-.02],[.1,.07,.05],rotZ(22.5))];
+    for(let i=0;i<6;i++){const t=(3.75+7.5*i)*P/180,b=[.47*cos(t),.47*sin(t),-.04];bell.push(limbOf(b,add(b,[.08*cos(t),.08*sin(t),-.14]),.006,.002))}
     // a gonad: an arc of four cones, a horseshoe about the diagonal, open toward the middle
     const gc=[.22*cos(P/4),.22*sin(P/4),-.1],arc=a=>add(gc,mul([cos(P/4+a),sin(P/4+a),0],.07));
-    for(let i=0;i<4;i++)piece.push(limbOf(arc(-2.3+1.15*i),arc(-1.15+1.15*i),.022,.022));
+    for(let i=0;i<4;i++)bell.push(limbOf(arc(-2.3+1.15*i),arc(-1.15+1.15*i),.022,.022));
     // an oral arm: a chain falling from the middle along the cross, frilled on both sides
-    const A=[[.03,0,-.1],[.1,0,-.22],[.16,0,-.36],[.2,0,-.5],[.22,0,-.6]];
+    const A=[[.03,0,-.1],[.1,0,-.22],[.16,0,-.36],[.2,0,-.5],[.22,0,-.6]],piece=[...bell];
     for(let i=0;i+1<A.length;i++){piece.push(limbOf(A[i],A[i+1],.035-.006*i,.03-.006*i,i==A.length-2?{jaw:1}:{}));
       piece.push(egg(add(mul(add(A[i],A[i+1]),.5),[0,.04,0]),[.06,.035,.008],mm(rotZ(10),rotY(-35+8*i))))}
-    return{...radial("a moon jelly",4,piece,"fly",[[[.49,0,-.05],[1,0,-.4]],[[.49*cos(P/4),.49*sin(P/4),-.05],[cos(P/4),sin(P/4),-.4]]],.02),
-      after:KN+`<a href="${CM}Haeckel_Discomedusae_98.jpg">plate 98</a>`}})(),
+    const after=KN+`<a href="${CM}Haeckel_Discomedusae_98.jpg">plate 98</a>`,
+      hung={...radial("a moon jelly",4,piece,"fly",[[[.49,0,-.05],[1,0,-.4]],[[.49*cos(P/4),.49*sin(P/4),-.05],[cos(P/4),sin(P/4),-.4]]],.02),after},
+      // (W3c) and as he draws it: each arm leaves the middle along the cross, runs out
+      // straight past half the bell's radius, falling as it goes, then curls about 66
+      // degrees round, counterclockwise seen from above (clockwise from below, as the
+      // plate shows it), hooking inward at its tip; frilled on both edges. Copied by the
+      // four turns alone, the bell taken whole.
+      R=[.04,.13,.22,.3,.36,.4,.41,.39,.35,.31],F=[0,0,1,3,8,17,30,45,58,66],Z=[-.1,-.15,-.2,-.25,-.3,-.34,-.38,-.41,-.43,-.44],
+      C=R.map((r,i)=>[r*cos(F[i]*P/180),r*sin(F[i]*P/180),Z[i]]),arm=[];
+    for(let i=0;i+1<C.length;i++){const t=sub(C[i+1],C[i]),h=unit([-t[1],t[0],0]),m=mul(add(C[i],C[i+1]),.5),w=.06-.004*i;
+      arm.push(limbOf(C[i],C[i+1],.036-.0024*i,.0336-.0024*i,i==C.length-2?{arm:1,jaw:1}:{arm:1}));
+      for(const s of[1,-1]){const u=unit(t),v=mul(h,s),f=cross(u,v);arm.push(egg(add(m,mul(v,w*.7)),[.7*len(t),w*.6,.01],[u[0],v[0],f[0],u[1],v[1],f[1],u[2],v[2],f[2]]))}}
+    return[hung,{...sym("a moon jelly","C4",4,[0,1,2,3].map(k=>turn([0,0,1],P*k/2)),[...radial("",4,bell,"fly").parts,...arm],"fly",hung.eyes,.02),after,trails:-1}]})(),
+  // (W3d) the periwinkle, Vinca minor, after Thome's Flora von Deutschland, Oesterreich und
+  // der Schweiz (Gera, 1885), the plate printed 542: the open flower face-on, five obovate
+  // lobes, each cut slantwise, its broad end turned clockwise seen from the front; the
+  // narrow tube flaring to the flat limb, as figure 1 cuts it, the narrow sepals at its
+  // foot; the throat's pale five-angled ring, the stigma in it; and the stalk to its foot.
+  // Its leaves, in opposite pairs along trailing stems, keep no five turns, and are left
+  // out. It is rooted.
+  vinca=(()=>{const lean=-20*P/180,rise=8*P/180,a=[cos(lean)*cos(rise),sin(lean)*cos(rise),sin(rise)],b=[-sin(lean),cos(lean),0],c=cross(a,b),
+      Rl=[a[0],b[0],c[0],a[1],b[1],c[1],a[2],b[2],c[2]],o=[.06,0,.33],at=(s,t)=>add(add(o,mul(a,s)),mul(b,t)),
+      piece=[egg([0,0,.2],[.05,.05,.14],I3,{disc:1}),egg([0,0,.335],[.13,.13,.014]),
+        egg(at(.17,0),[.17,.125,.012],Rl,{arm:1}),egg(at(.3,-.04),[.09,.09,.011],Rl),
+        limbOf([.045*cos(-P/5),.045*sin(-P/5),.345],[.045*cos(P/5),.045*sin(P/5),.345],.008,.008),egg([0,0,.35],[.018,.018,.015]),
+        limbOf([.03*cos(P/5),.03*sin(P/5),.08],[.085*cos(P/5),.085*sin(P/5),.17],.012,.003),limbOf([0,0,.08],[0,0,-.95],.016,.02,{foot:1})];
+    return{...sym("a periwinkle","C5",5,[0,1,2,3,4].map(k=>turn([0,0,1],2*P*k/5)),piece,"root"),trails:1,
+      after:`Thom&eacute;, <i>Flora von Deutschland, &Ouml;sterreich und der Schweiz</i>, 1885, <a href="${CM}Illustration_Vinca_minor0.jpg">plate 542</a>`}})(),
+  // (W3e) Pleurosigma quadratum, after W. Smith's Synopsis of the British Diatomaceae, vol.
+  // I (1853), plate XX, figure 204: a flat frustule, its valves rhombic, about 0.29 as wide
+  // as long, their ends leaning opposite ways by a tenth of the half-length; a median line
+  // along each valve, a nodule at its middle and at each end. Its two valves nest, so the
+  // mirror across their plane keeps it. Its length along x. It drifts.
+  pleurosigma=(()=>{const flat=(c,ax,deg,o)=>{const a=deg*P/180;return egg(c,ax,[cos(a),-sin(a),0,sin(a),cos(a),0,0,0,1],o)},
+      piece=[flat([0,0,0],[.48,.24,.05],0,{disc:1}),flat([.47,.012,0],[.25,.13,.03],4),flat([.72,.05,0],[.2,.06,.018],13),
+        egg([0,0,.052],[.03,.022,.012]),egg([.86,.09,.006],[.02,.015,.01],I3,{tip:1})],
+      M=[[0,0,.054],[.3,.004,.042],[.55,.02,.028],[.75,.055,.016],[.86,.09,.009]];
+    for(let i=0;i+1<M.length;i++)piece.push(limbOf(M[i],M[i+1],.007,.007));
+    return{...sym("a diatom","C2h",2,[I3,turn([0,0,1],P),mirror([0,0,1]),mm(turn([0,0,1],P),mirror([0,0,1]))],piece,"fly"),
+      after:`Smith, <i>A Synopsis of the British Diatomaceae</i>, 1853, <a href="https://archive.org/details/synopsisofbritis01smit/page/n172/mode/1up">plate 20</a>`}})(),
   // Carmarina, after Haeckel's Trachomedusae plate (Kunstformen der Natur, 1904, plate 26),
   // figures 1 and 7: a domed bell; under it six broad gonad leaves, a six-armed star, each
   // along its canal, which runs on to the margin; a long stalk hanging from its middle, ending
@@ -547,7 +586,7 @@ const MIRROR=[1,0,0,0,-1,0,0,0,1],rotY=t=>turn([0,1,0],t*P/180),rotX=t=>turn([1,
       ...hedgeSpines.side],
       [[[.3,.06,.02],[.5,1,.35]]],"jump",.35)},
     ophiura,aurelia,carmarina,iris,petalospyris,pleuronectes,lagena,stephanastrum,acanthostaurus,
-    heliodiscus(3),heliodiscus(5),heliodiscus(6),coccodiscus,tetraplagia,centrocubus,circogonia,sphaerozoum],
+    heliodiscus(3),heliodiscus(5),heliodiscus(6),coccodiscus,tetraplagia,centrocubus,circogonia,sphaerozoum,aureliaC4,vinca,pleurosigma],
   // A beast is set by its world: its left along the normal of the group's one mirror, its
   // up against down where down is given, its head forward's way along the mirror where
   // forward is given, else up x left's other way; without down, its up is head x left,
@@ -576,11 +615,27 @@ const MIRROR=[1,0,0,0,-1,0,0,0,1],rotY=t=>turn([0,1,0],t*P/180),rotX=t=>turn([1,
   c1Q=d=>{const z=d.down?mul(unit(d.down),-1):unit(d.spin||d.stretch||d.forward),
       h=[d.forward,d.spin,d.stretch,[1,0,0],[0,1,0]].find(v=>v&&len(sub(v,mul(z,dot(v,z))))>1e-6),x=unit(sub(h,mul(z,dot(h,z)))),y=cross(z,x);
     return[x[0],y[0],z[0],x[1],y[1],z[1],x[2],y[2],z[2]]},
+  // (W3c) for C_n, turns and no mirror, which only a spin along an arrow leaves: up
+  // against down where down is given, else along forward; its azimuth, which the world
+  // leaves free, the body's own, as a fragment's is drawn with its seed; and its hand the
+  // world's: each is made trailing a spin one way about its top (trails, the sign of that
+  // spin along up), and is mirrored, so that it still trails, where the spin turns the
+  // other way
+  cnQ=(B,d)=>{const z=d.down?mul(unit(d.down),-1):unit(d.forward),f=[0,1].map(i=>mv(S.frame,I3.slice(3*i,3*i+3))).find(v=>len(cross(v,z))>.1),
+      x=unit(sub(f,mul(z,dot(f,z)))),y=mul(cross(z,x),dot(d.spin,z)*B.trails>0?1:-1);
+    return[x[0],y[0],z[0],x[1],y[1],z[1],x[2],y[2],z[2]]},
+  // (W3e) for C_nh, a flat pinwheel, which a spin leaves: its axis along the spin; its
+  // length along a stretch that crosses the spin, as a tide draws a rod out along itself,
+  // else its azimuth the body's own. Turned over it is its own mirror image, and has no hand.
+  cnhQ=d=>{const z=unit(d.spin),t=d.stretch?sub(d.stretch,mul(z,dot(d.stretch,z))):[0,0,0],
+      f=len(t)>1e-6?t:[0,1].map(i=>mv(S.frame,I3.slice(3*i,3*i+3))).find(v=>len(cross(v,z))>.1),x=unit(sub(f,mul(z,dot(f,z)))),y=cross(z,x);
+    return[x[0],y[0],z[0],x[1],y[1],z[1],x[2],y[2],z[2]]},
   // (W3b) where a creature is set: Cs and C_nv as before; D_nh and the turned forms along
   // the axis; the polyhedra in the body's own frame, which their group is built in; C1 by
-  // the directions; the ball as it is
+  // the directions; (W3c) C_n by its arrow and its spin; (W3e) C_nh by its spin; the ball
+  // as it is
   placeQ=(B,G,d)=>B.shape=="Cs"?beastQ(G,d):/^C\d+v$/.test(B.shape)?radialQ(G,d):/^D/.test(B.shape)||B.shape=="Cinfv"?axialQ(G,d):
-    /^[TOI]/.test(B.shape)?S.frame:B.shape=="C1"?c1Q(d):I3,
+    /^[TOI]/.test(B.shape)?S.frame:B.shape=="C1"?c1Q(d):/^C\d+$/.test(B.shape)?cnQ(B,d):/^C\d+h$/.test(B.shape)?cnhQ(d):I3,
   placeBeast=(B,Q)=>B.parts.map(q=>{const o={...q,...act(Q,q)};delete o.bb;if(q.hip)o.hip=mv(Q,q.hip);return o}),
   // (W2s) a leg swung as a rigid whole about its hip, about the beast's across axis Y: a
   // trot, left fore with right hind, half a stride from the other two
@@ -740,8 +795,10 @@ function solve(){const W={};for(const k in KIND)if(on[k])W[k]=raw[k];
   // (W2r) down as weight: where down is given, a body flies if it has a wing (a fin),
   // jumps if a limb is its lowest point along down, and else walks (a beast says which);
   // a jumper or a walker stands on the ground, the plane across down through its lowest
-  // point. Its breadth is how far it reaches across down.
-  const dn=dirs.down?unit(dirs.down):null,Qs=now.body.length?now.body:K;now.down=dn;now.kind=null;now.ground=0;now.breadth=0;
+  // point. Its breadth is how far it reaches across down. (W3f) A foundling's own down is
+  // not shown, and the visitor's is a guess: until it is placed, down has no weight on it;
+  // placed, the world the visitor made is its world, and its ground is drawn.
+  const dn=dirs.down&&!(found&&!now.placed)?unit(dirs.down):null,Qs=now.body.length?now.body:K;now.down=dn;now.kind=null;now.ground=0;now.breadth=0;
   if(dn){let low=null,m=-9;for(const q of Qs){const s=supportAlong(q,dn);if(s>m){m=s;low=q}}now.ground=m;
     now.kind=B?B.kind:K.some(q=>q.fin)?"fly":low&&low.k==1?"jump":"walk";
     for(const q of Qs){const lv=p=>len(sub(p,mul(dn,dot(p,dn))));now.breadth=max(now.breadth,q.k==1?max(lv(q.p[0])+q.r,lv(q.p[1])+q.r2):lv(q.c)+max(...q.ax))}}
@@ -1454,7 +1511,8 @@ $("square").onclick=square;
 // and mirrors are to be found; back in free play, its fragment is a body of the visitor's
 // world.
 let finding=false;
-const fresh=()=>{foundling();formOn=true;$("form").setAttribute("aria-pressed",true)};
+// (W3f) only "what's right" on: the form is the clue, and what's left is the visitor's to ask for
+const fresh=()=>{foundling();formOn=true;$("form").setAttribute("aria-pressed",true);roomOn=false;$("room").setAttribute("aria-pressed",false)};
 // In a world that leaves one mirror, one time in three (chosen) a beast comes, either equally.
 const another=()=>{if(finding)fresh();else{const C=found?[]:BEASTS.filter(b=>b.shape==shapeOf(now.G));found=null;S=seed(random()*4294967296>>>0);pose=I3;
   if(C.length&&random()<1/3)S.beast=C[random()*C.length|0]}settle();solve();wake();draw()};
