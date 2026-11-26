@@ -406,6 +406,21 @@ const MIRROR=[1,0,0,0,-1,0,0,0,1],rotY=t=>turn([0,1,0],t*P/180),rotX=t=>turn([1,
     for(let i=0;i+1<M.length;i++)piece.push(limbOf(M[i],M[i+1],.007,.007));
     return{...sym("a diatom","C2h",2,[I3,turn([0,0,1],P),mirror([0,0,1]),mm(turn([0,0,1],P),mirror([0,0,1]))],piece,"fly"),
       after:`Smith, <i>A Synopsis of the British Diatomaceae</i>, 1853, <a href="https://archive.org/details/synopsisofbritis01smit/page/n172/mode/1up">plate 20</a>`}})(),
+  // (W3g) Velella, the by-the-wind sailor, after Chun's Die Ctenophoren des Golfes von
+  // Neapel (1880), p. 15, Fig. 5, his "einstrahliges Radiaerthier", two congruent halves
+  // and no symmetric quarters: the mantle an ellipse, 0.7 as wide as long, the float a
+  // smaller one on it; the sail standing through the middle at 20 degrees to the long
+  // axis; broad pointed flaps diagonally opposite, at 26 degrees the other way; beneath,
+  // the central polyp, a ring of gonozooids and the marginal tentacles. The S Chun gives
+  // the sail's crest, without saying which way it turns, is drawn flat. It drifts.
+  velella=(()=>{const s=-20*P/180,u=[cos(s),sin(s),0],w=[-sin(s),cos(s),0],
+      piece=[egg([0,0,0],[.7,.49,.03],I3,{disc:1}),egg([0,0,.025],[.5,.34,.04]),
+        egg([0,0,.06],[.56,.012,.3],[u[0],w[0],0,u[1],w[1],0,0,0,1],{arm:1,tip:1}),
+        egg([.58*cos(26*P/180),.58*sin(26*P/180),-.005],[.26,.15,.018],rotZ(26)),egg([0,0,-.17],[.1,.1,.15])];
+    for(let k=0;k<6;k++){const t=(15+30*k)*P/180;piece.push(egg([.24*cos(t),.24*sin(t),-.1],[.05,.05,.07]))}
+    for(let k=0;k<10;k++){const t=(9+18*k)*P/180,b=[.66*cos(t),.46*sin(t),-.02];piece.push(limbOf(b,add(b,[.04*cos(t),.04*sin(t),-.18]),.012,.004))}
+    return{...sym("a by-the-wind sailor","C2",2,[I3,turn([0,0,1],P)],piece,"fly"),trails:1,
+      after:`Chun, <i>Die Ctenophoren des Golfes von Neapel</i>, 1880, <a href="https://archive.org/details/diectenophorende00chun/page/n38/mode/1up">figure 5</a>`}})(),
   // Carmarina, after Haeckel's Trachomedusae plate (Kunstformen der Natur, 1904, plate 26),
   // figures 1 and 7: a domed bell; under it six broad gonad leaves, a six-armed star, each
   // along its canal, which runs on to the margin; a long stalk hanging from its middle, ending
@@ -586,7 +601,7 @@ const MIRROR=[1,0,0,0,-1,0,0,0,1],rotY=t=>turn([0,1,0],t*P/180),rotX=t=>turn([1,
       ...hedgeSpines.side],
       [[[.3,.06,.02],[.5,1,.35]]],"jump",.35)},
     ophiura,aurelia,carmarina,iris,petalospyris,pleuronectes,lagena,stephanastrum,acanthostaurus,
-    heliodiscus(3),heliodiscus(5),heliodiscus(6),coccodiscus,tetraplagia,centrocubus,circogonia,sphaerozoum,aureliaC4,vinca,pleurosigma],
+    heliodiscus(3),heliodiscus(5),heliodiscus(6),coccodiscus,tetraplagia,centrocubus,circogonia,sphaerozoum,aureliaC4,vinca,pleurosigma,velella],
   // A beast is set by its world: its left along the normal of the group's one mirror, its
   // up against down where down is given, its head forward's way along the mirror where
   // forward is given, else up x left's other way; without down, its up is head x left,
