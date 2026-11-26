@@ -60,8 +60,10 @@ What whatsleftisright.com does. A golf pass must keep every line true.
     down, they fall at 0.25 a second, as snow; forward, they stream back at
     the body's own speed, at most 0.5; a spin turns body and medium together once in 12 seconds; a stretch is
     pure strain, 0.3 a second along it. With nothing given they wander. These
-    rates are chosen, not measured. Motion is worked in fixed steps of 1/240 s;
-    with reduced motion nothing moves.
+    rates are chosen, not measured. Motion is worked in fixed steps of 1/240 s,
+    and a frame falling between two steps draws the specks, the crumbs, the spin,
+    the stride and the passing ground that far between them; with reduced motion
+    nothing moves.
 10. The first row holds the two modes, one always pressed: "free play", where the
     visitor's world makes the body, and "find match". In find match, "another body"
     brings a foundling (and choosing find match brings one at once; back in free
@@ -95,7 +97,8 @@ What whatsleftisright.com does. A golf pass must keep every line true.
     families. Eyes keep their colours in either theme. Dark mode follows the
     system until the theme button turns it for the visit; nothing is kept.
 13. On a full screen the page is seen whole without scrolling: the label beneath
-    the drawing, or beside it where that leaves the drawing larger.
+    the drawing, or beside it where that leaves the drawing larger, its last line
+    standing on the drawing's foot.
 14. A screen reader hears the world and what it leaves ("Down and forward. One
     mirror is left."), and "Placed." while a foundling is.
 15. A click on the drawing, not a drag, drops a crumb there, at the middle's depth

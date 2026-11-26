@@ -12,13 +12,13 @@ body{margin:0;padding:3rem 16px 1.4rem;min-height:100svh;box-sizing:border-box;d
 main,.by{width:100%;max-width:68rem;margin:0 auto}
 main{flex:1}
 nav,.label{max-width:34rem}
-main.beside{display:grid;grid-template-columns:auto 24rem;grid-template-rows:1fr auto auto;column-gap:40px}
+main.beside{display:grid;grid-template-columns:auto 24rem;grid-template-rows:1fr auto auto;column-gap:40px;flex:none;margin-bottom:auto}
 main.beside canvas{grid-column:1;grid-row:1/4}
 main{position:relative}
 #square{position:absolute;transform:translateX(-100%);font:.8rem/1.6 var(--typewriter)}
 #square[hidden]{display:none}
 main.beside nav{grid-column:2;grid-row:2;margin-top:0}
-main.beside .label{grid-column:2;grid-row:3}
+main.beside .label{grid-column:2;grid-row:3;margin-bottom:-.21em}
 canvas{display:block;touch-action:none;cursor:grab}
 canvas:active{cursor:grabbing}
 canvas:focus-visible,button:focus-visible{outline:1px solid var(--rule);outline-offset:6px}
@@ -91,6 +91,10 @@ const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],
   turn=(a,t)=>{const c=cos(t),s=sin(t),C=1-c,[x,y,z]=a;
     return[c+x*x*C,x*y*C-z*s,x*z*C+y*s,y*x*C+z*s,c+y*y*C,y*z*C-x*s,z*x*C-y*s,z*y*C+x*s,c+z*z*C]},
   mirror=n=>{const[x,y,z]=n;return[1-2*x*x,-2*x*y,-2*x*z,-2*y*x,1-2*y*y,-2*y*z,-2*z*x,-2*z*y,1-2*z*z]},
+  // a turning made again exactly a turning: its rows set square and of length one, so the
+  // rounding of a long drag cannot gather (a turn about an axis a little long scales what it
+  // turns, and the next axis is longer still)
+  rot=m=>{const a=unit(m.slice(0,3)),b0=m.slice(3,6),b=unit(sub(b0,mul(a,dot(a,b0)))),c=cross(a,b);return[...a,...b,...c]},
   // a unit vector across a
   across=a=>unit(cross(a,abs(a[0])<.9?[1,0,0]:[0,1,0]));
 
@@ -974,8 +978,8 @@ precision highp float;in float A;uniform vec3 k;out vec4 o;void main(){vec2 d=gl
   CV=`#version 300 es
 layout(location=0) in vec2 q;void main(){gl_Position=vec4(q*2.-1.,0.,1.);}`,
   CF=`#version 300 es
-precision highp float;uniform sampler2D C,Nm,Dp;uniform vec3 ink;uniform float k;out vec4 o;
-void main(){ivec2 p=ivec2(gl_FragCoord.xy);vec4 c=texelFetch(C,p,0);if(c.a<.5)discard;
+precision highp float;uniform sampler2D C,Nm,Dp;uniform vec3 ink;uniform float k;uniform ivec2 off;out vec4 o;
+void main(){ivec2 p=ivec2(gl_FragCoord.xy)-off;vec4 c=texelFetch(C,p,0);if(c.a<.5)discard;
   vec3 a=texelFetch(Nm,p,0).xyz*2.-1.;float e=0.;int s=max(1,int(.5*k));
   for(int i=0;i<4;i++){vec4 m=texelFetch(Nm,p+ivec2(i==0?s:i==1?-s:0,i==2?s:i==3?-s:0),0);if(m.a>.5)e=max(e,1.-dot(a,m.xyz*2.-1.));}
   c.rgb=mix(c.rgb,ink,smoothstep(.2,.3,e));
@@ -986,7 +990,7 @@ function glUp(){try{glc=document.createElement("canvas");
   const prog=(vs,fs)=>{const p=g.createProgram();for(const[t,s]of[[g.VERTEX_SHADER,vs],[g.FRAGMENT_SHADER,fs]]){const h=g.createShader(t);
       g.shaderSource(h,s);g.compileShader(h);g.attachShader(p,h)}g.linkProgram(p);if(!g.getProgramParameter(p,g.LINK_STATUS))throw 0;return p};
   PB=prog(BV,BF);PS=prog(SV,SF);PR=prog(RV,RF);PC=prog(CV,CF);
-  for(const k of["C","Nm","Dp","ink","k"])U["c"+k]=g.getUniformLocation(PC,k);
+  for(const k of["C","Nm","Dp","ink","k","off"])U["c"+k]=g.getUniformLocation(PC,k);
   U.fb=g.createFramebuffer();U.fc=g.createTexture();U.fn=g.createTexture();U.fd=g.createTexture();U.fs=0;
   for(const k of["l","w","ik","pc","ink","tint","px","dp"])U[k]=g.getUniformLocation(PB,k);for(const k of["l","z","k"])U["s"+k]=g.getUniformLocation(PS,k);
   for(const k of["l","w","a","R","T","ik","ey","ink","tint","px","dp"])U["r"+k]=g.getUniformLocation(PR,k);
@@ -1042,10 +1046,15 @@ function packed(V,parts){const f=new Float32Array(parts.length*20),to=p=>[dot(V.
     else{const r=q.r;f.set([-r,-r,r,r,0,0,0,0,1/r,0,0,0,0,1/r,0,0,0,0,1/r,0],o)}});
   return f}
 const unit3=s=>(s.match(/\d+/g)||[0,0,0]).slice(0,3).map(v=>v/255);
-// one view, drawn in WebGL and set into the page's canvas
-function glView(V,parts,fresh,R){const[x0,y0,side]=V.r,N=min(2048,round(side*dpr*1.5)),
+// The three views share one card, the plan at its foot and the elevations stacked beside
+// it, all drawn before any is set into the page's canvas: a view drawn on the card after
+// an earlier one was taken from it would wait on that copy.
+function cards(){const n=V=>min(2048,round(V.r[2]*dpr*1.5)),[p,a,b]=VIEWS.map(n),W=p+max(a,b),H=max(p,a+b);
+  VIEWS[0].card=[0,0,p];VIEWS[1].card=[p,0,a];VIEWS[2].card=[p,a,b];
+  if(glc.width!=W||glc.height!=H){glc.width=W;glc.height=H}}
+// one view, drawn in WebGL in its place on the card
+function glView(V,parts,fresh,R){const side=V.r[2],[ox,oy,N]=V.card,
     style=k=>{gl.uniform3fv(U[k+"ink"],col.inkv);gl.uniform3fv(U[k+"tint"],col.tint);gl.uniform1f(U[k+"px"],N/(2*L));gl.uniform1f(U[k+"dp"],N/side)};
-  if(glc.width!=N)glc.width=glc.height=N;
   // the body's own card, as large as the largest view yet, colours, normals and depth
   if(U.fs<N){U.fs=N;for(const[t,f,i,ty]of[[U.fc,gl.RGBA8,gl.RGBA,gl.UNSIGNED_BYTE],[U.fn,gl.RGBA8,gl.RGBA,gl.UNSIGNED_BYTE],[U.fd,gl.DEPTH_COMPONENT24,gl.DEPTH_COMPONENT,gl.UNSIGNED_INT]]){
       gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,f,N,N,0,i,ty,null);
@@ -1074,20 +1083,20 @@ function glView(V,parts,fresh,R){const[x0,y0,side]=V.r,N=min(2048,round(side*dpr
     gl.uniform1f(U.l,L);gl.uniform3fv(U.w,col.gloss);gl.uniform3fv(U.ik,col.pupil);gl.uniform3fv(U.pc,col.per);style("");
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP,0,4,ep.length)}
   // set down onto the view's card, with its creases and its depth
-  gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,N,N);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
-  gl.useProgram(PC);gl.bindVertexArray(vaoC);gl.depthFunc(gl.ALWAYS);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(ox,oy,N,N);gl.enable(gl.SCISSOR_TEST);gl.scissor(ox,oy,N,N);
+  gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  gl.useProgram(PC);gl.bindVertexArray(vaoC);gl.depthFunc(gl.ALWAYS);gl.uniform2i(U.coff,ox,oy);
   [[U.fc,"C"],[U.fn,"Nm"],[U.fd,"Dp"]].forEach(([t,k],i)=>{gl.activeTexture(gl.TEXTURE1+i);gl.bindTexture(gl.TEXTURE_2D,t);gl.uniform1i(U["c"+k],1+i)});
   gl.uniform3fv(U.cink,col.inkv);gl.uniform1f(U.ck,N/side);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);gl.activeTexture(gl.TEXTURE0);
-  const s=new Float32Array(NT*5);specks.forEach((b,i)=>s.set([dot(V.X,b.p),dot(V.Y,b.p),dot(V.D,b.p),min(1,(sim-b.t)/400)*.6,b.s],5*i));
+  const s=new Float32Array(NT*5);specks.forEach((b,i)=>{const p=seen(b);s.set([dot(V.X,p),dot(V.Y,p),dot(V.D,p),min(1,(sim-b.t)/400)*.6,b.s],5*i)});
   gl.useProgram(PS);gl.bindVertexArray(vaoS);gl.bindBuffer(gl.ARRAY_BUFFER,bufS);gl.bufferData(gl.ARRAY_BUFFER,s,gl.DYNAMIC_DRAW);
   gl.uniform1f(U.sl,L);gl.uniform1f(U.sz,3*N/side);gl.uniform3fv(U.sk,unit3(col.ink));
   gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.depthFunc(gl.LEQUAL);
   gl.drawArrays(gl.POINTS,0,NT);
   // the crumbs, larger, in the glaze's accent, behind the body where they are behind it
-  if(crumbs.length){const cb=new Float32Array(crumbs.length*5);crumbs.forEach((b,i)=>cb.set([dot(V.X,b.p),dot(V.Y,b.p),dot(V.D,b.p),1,2.2],5*i));
+  if(crumbs.length){const cb=new Float32Array(crumbs.length*5);crumbs.forEach((b,i)=>{const p=seen(b);cb.set([dot(V.X,p),dot(V.Y,p),dot(V.D,p),1,2.2],5*i)});
     gl.bufferData(gl.ARRAY_BUFFER,cb,gl.DYNAMIC_DRAW);gl.uniform3fv(U.sk,unit3(col.accent));gl.drawArrays(gl.POINTS,0,crumbs.length)}
-  gl.disable(gl.BLEND);gl.bindVertexArray(null);
-  x.drawImage(glc,0,0,N,N,x0,y0,side,side)}
+  gl.disable(gl.BLEND);gl.disable(gl.SCISSOR_TEST);gl.bindVertexArray(null)}
 
 // Without WebGL 2: the body in silhouette, in its glaze, kept until it changes; the specks
 // behind it, and before it where they are nearer the camera than any part of it.
@@ -1110,6 +1119,9 @@ function silhouette(V,parts){const o=V.o||(V.o=document.createElement("canvas"))
 // space is born again somewhere in it, fading in over 0.4 s. (Rates in the body's reach
 // per second: chosen, not measured.)
 const STEP=1000/240,NT=140,specks=[],OMEGA=2*P/12;let sim=0;
+// A frame falls between two steps; what moves steadily is drawn where it is at the frame's
+// own moment, that far between where it was a step before and where it is: tw, from 0 to 1
+let tw=1;const was={spun:0,gaitP:0,gnd:[0,0,0]},seen=b=>b.q&&tw<1?add(b.q,mul(sub(b.p,b.q),tw)):b.p;
 const born=()=>({p:[0,1,2].map(()=>(2*random()-1)*L),t:sim,s:1});
 for(let i=0;i<NT;i++){const b=born();b.t=-1e9;specks.push(b)}
 // (W2r) where down is given, the snow falls along it
@@ -1225,7 +1237,7 @@ function steer(dt){let p=plan();
     raw.forward=mv(R,raw.forward);pose=mm(R,pose);S.frame=mm(R,S.frame);eyeDir=mv(R,eyeDir);
     bent=turnBend?min(1,abs(om)/OMX):0;bendN=turnBend?unit(cross(mul(turnW,Math.sign(om)),now.dirs.forward)):null;solve()}
   else{bent=0;bendN=null}}
-function step(){sim+=STEP;const dt=STEP/1000,still=!Object.keys(now.dirs).length;steer(dt);
+function step(){sim+=STEP;const dt=STEP/1000,still=!Object.keys(now.dirs).length;was.spun=spun;was.gaitP=gaitP;was.gnd=gnd;steer(dt);
   const gd=grounded(),d=now.down;
   // a jumper on its ground leaps for a crumb still falling, over it and within a leap: up
   // at sqrt(2 g h), to the crumb's height
@@ -1245,12 +1257,12 @@ function step(){sim+=STEP;const dt=STEP/1000,still=!Object.keys(now.dirs).length
   if(now.beast&&now.beast.stride&&gd&&!alt){const gs=len(under);gaitA+=(GAIT*min(1,gs/.3)-gaitA)*min(1,8*dt);gaitP+=2*P*gs*dt/now.beast.stride}
   else gaitA*=max(0,1-8*dt);
   if(now.dirs.spin)spun+=OMEGA*dt;
-  for(const b of specks){b.p=add(b.p,mul(sub(flow(b.p,b.s),v),dt));
+  for(const b of specks){b.q=b.p;b.p=add(b.p,mul(sub(flow(b.p,b.s),v),dt));
     if(still)b.p=b.p.map(v=>v+(random()-.5)*.02);
-    if(b.p.some(v=>abs(v)>L))Object.assign(b,born());
+    if(b.p.some(v=>abs(v)>L)){Object.assign(b,born());b.q=b.p}
     // snow that reaches the ground is gone, and falls again from above
-    if(gd&&dot(b.p,d)>gl)b.p=add(level(b.p),mul(d,-L+random()*(gl+L)))}
-  let ate=0;for(let i=crumbs.length;i--;){const b=crumbs[i];if(!gd)b.ground=0;
+    if(gd&&dot(b.p,d)>gl)b.q=b.p=add(level(b.p),mul(d,-L+random()*(gl+L)))}
+  let ate=0;for(let i=crumbs.length;i--;){const b=crumbs[i];b.q=b.p;if(!gd)b.ground=0;
     b.p=add(b.p,mul(b.ground?under:sub(flow(b.p,1),v),dt));
     if(gd&&!b.ground&&dot(b.p,d)>=gl)b.ground=1;
     if(b.ground)b.p=add(level(b.p),mul(d,gl));
@@ -1386,7 +1398,7 @@ function drawRoom(V){const B=roomOf(),h=1.25*now.reach,pt=p=>at(V,p);
 function drawGround(V){const d=now.down,f=now.dirs.forward,u=f&&len(level(f))>1e-6?unit(level(f)):across(d),w=cross(d,u),
     h=1.4*now.reach,o=mul(d,now.ground+alt),s=.2,pt=p=>at(V,p),line=(a,b)=>{const A=pt(a),B=pt(b);x.moveTo(A[0],A[1]);x.lineTo(B[0],B[1])};
   x.save();x.strokeStyle=col.ink;x.lineWidth=1;x.globalAlpha=.22;x.beginPath();
-  const ou=((dot(gnd,u)%s)+s)%s,ow=((dot(gnd,w)%s)+s)%s;
+  const g=add(was.gnd,mul(sub(gnd,was.gnd),tw)),ou=((dot(g,u)%s)+s)%s,ow=((dot(g,w)%s)+s)%s;
   for(let a=-h+ou;a<=h;a+=s)line(add(o,add(mul(u,a),mul(w,-h))),add(o,add(mul(u,a),mul(w,h))));
   for(let b=-h+ow;b<=h;b+=s)line(add(o,add(mul(w,b),mul(u,-h))),add(o,add(mul(w,b),mul(u,h))));
   x.stroke();x.restore()}
@@ -1409,21 +1421,22 @@ function draw(){x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,CW,CH);
   if(pane&&calm&&pane.shown)pane=null;if(pane&&calm)pane.shown=1;
   if(click&&calm&&click.shown)click=null;if(click&&calm)click.shown=1;
   if(click&&!calm)wake();
-  const R=now.dirs.spin&&spun?turn(now.dirs.spin,spun):null,
+  const R=now.dirs.spin&&spun?turn(now.dirs.spin,spun-(spun-was.spun)*(1-tw)):null,
     redo=!shaped||bending()||walking()||R&&!now.G.ball&&!(now.G.name.includes("inf")),
-    base=walking()?(Y=>now.body.map(q=>swing(q,Y,gaitA*sin(gaitP))))(acrossOf()):now.body,
+    base=walking()?(Y=>now.body.map(q=>swing(q,Y,gaitA*sin(gaitP-(gaitP-was.gaitP)*(1-tw)))))(acrossOf()):now.body,
     parts=(Q=>bending()?Q.map(q=>bendPart(q,now.dirs.forward,bendN,.5*bent)):Q)(R&&redo?base.map(q=>act(R,q)):base);
+  if(gl){cards();for(const V of VIEWS)glView(V,parts,redo,R)}
   for(const V of VIEWS){const[x0,y0,side]=V.r;
     x.save();x.beginPath();x.rect(x0,y0,side,side);x.clip();
     x.fillStyle=col.paper;x.fillRect(x0,y0,side,side);
     x.strokeStyle=col.rule;x.lineWidth=1;x.strokeRect(x0+.5,y0+.5,side-1,side-1);
     if(grounded())drawGround(V);
     for(const k in shown())direction(V,k,false);
-    if(gl)glView(V,parts,redo,R);
+    if(gl){const[ox,oy,N]=V.card;x.drawImage(glc,ox,glc.height-oy-N,N,N,x0,y0,side,side)}
     else{if(redo)silhouette(V,parts);
-      const dots=front=>{x.fillStyle=col.ink;for(const b of specks){const d=dot(V.D,b.p);if(front!=(d>now.reach))continue;
-        x.globalAlpha=min(1,(sim-b.t)/400)*.6;const[X,Y]=at(V,b.p);x.beginPath();x.arc(X,Y,1.5*b.s,0,2*P);x.fill()}x.globalAlpha=1;
-        x.fillStyle=col.accent;for(const b of crumbs){if(front!=(dot(V.D,b.p)>now.reach))continue;const[X,Y]=at(V,b.p);x.beginPath();x.arc(X,Y,3.3,0,2*P);x.fill()}};
+      const dots=front=>{x.fillStyle=col.ink;for(const b of specks){const p=seen(b),d=dot(V.D,p);if(front!=(d>now.reach))continue;
+        x.globalAlpha=min(1,(sim-b.t)/400)*.6;const[X,Y]=at(V,p);x.beginPath();x.arc(X,Y,1.5*b.s,0,2*P);x.fill()}x.globalAlpha=1;
+        x.fillStyle=col.accent;for(const b of crumbs){const p=seen(b);if(front!=(dot(V.D,p)>now.reach))continue;const[X,Y]=at(V,p);x.beginPath();x.arc(X,Y,3.3,0,2*P);x.fill()}};
       dots(false);x.drawImage(V.o,x0,y0,side,side);dots(true);
       // without WebGL, the eyes on the camera's side of the middle, flat
       for(const q of eyeParts(R)){if(dot(V.D,q.c)<0)continue;const[X,Y]=at(V,q.c);
@@ -1447,12 +1460,15 @@ function draw(){x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,CW,CH);
 function ease(k){let a=0,b=1,s;for(let i=0;i<20;i++){s=(a+b)/2;.75*s*(1-s)+s*s*s<k?a=s:b=s}return s*(.3*(1-s)*(1-s)+3*s*(1-s)+s*s)}
 let old=null,t0=0;
 
-// Time: fixed steps of 1/240 s; with reduced motion nothing moves, and the page draws
-// only when something changes.
+// Time: fixed steps of 1/240 s, each frame drawn at its own moment between two of them;
+// with reduced motion nothing moves, and the page draws only when something changes.
 let last=null,acc=0,running=false;
-function frame(t){if(last==null)last=t;acc+=min(250,t-last);last=t;while(acc>=STEP){step();acc-=STEP}squaring();draw();
+function frame(t){if(last==null)last=t;acc+=min(250,t-last);last=t;while(acc>=STEP){step();acc-=STEP}tw=calm?1:acc/STEP;squaring();draw();
   if(!calm)requestAnimationFrame(frame);else{running=false;last=null}}
 function wake(){if(!running){running=true;requestAnimationFrame(frame)}}
+// what a hand changes is drawn by the next frame, once, however many moves come before it;
+// under reduced motion, where no frames run, at once
+function soon(){if(calm)draw();else wake()}
 
 // Holding a direction by its head turns it as on a ball under the pointer; holding the
 // body turns its fragment, as a kaleidoscope is turned; holding the ground turns the
@@ -1491,16 +1507,16 @@ c.addEventListener("pointermove",e=>{const[X,Y]=local(e),V=grip?grip.V:viewAt(X,
   if(!grip)return;
   if(Math.hypot(X-grip.o[0],Y-grip.o[1])>4)grip.moved=1;
   if(grip.cam){const dx=X-grip.cam[0],dy=Y-grip.cam[1];grip.cam=[X,Y];
-    sq=null;cam=mm(mm(turn(V.X,-dy/V.s),turn(V.Y,-dx/V.s)),cam);aim();shaped=0;draw();return}
-  if(grip.eye&&turned()){const q=onBall(V,X,Y);if(q){eyeDir=unit(q);eyes();tell();draw()}return}
+    sq=null;cam=rot(mm(mm(turn(unit(V.X),-dy/V.s),turn(unit(V.Y),-dx/V.s)),cam));aim();shaped=0;soon();return}
+  if(grip.eye&&turned()){const q=onBall(V,X,Y);if(q){eyeDir=unit(q);eyes();tell();soon()}return}
   if(grip.eye){const R=spinNow(),B=R?tr(R):I3,o=add(add(mul(V.X,(X-V.cx)/V.s),mul(V.Y,(V.cy-Y)/V.s)),mul(V.D,5)),q=hit(mv(B,o),mv(B,mul(V.D,-1)),now.body);
-    if(q){eyeDir=unit(q);eyes();tell();draw()}return}
+    if(q){eyeDir=unit(q);eyes();tell();soon()}return}
   if(grip.k){const r=REACH[grip.k],a=(X-grip.off[0]-V.cx)/V.s/r,b=(V.cy-Y+grip.off[1])/V.s/r,m=Math.hypot(a,b),v=raw[grip.k],
       dep=(dot(V.D,v)*grip.sg<0?-1:1);
     const q=m>=1?add(mul(V.X,a/m),mul(V.Y,b/m)):add(add(mul(V.X,a),mul(V.Y,b)),mul(V.D,dep*sqrt(1-m*m)));
     raw[grip.k]=mul(q,grip.sg)}
-  else{const dx=X-grip.turn[0],dy=Y-grip.turn[1];grip.turn=[X,Y];pose=mm(mm(turn(V.Y,dx/V.s),turn(V.X,dy/V.s)),pose)}
-  solve();wake();draw()});
+  else{const dx=X-grip.turn[0],dy=Y-grip.turn[1];grip.turn=[X,Y];pose=rot(mm(mm(turn(unit(V.Y),dx/V.s),turn(unit(V.X),dy/V.s)),pose))}
+  solve();soon()});
 // a click on the ground or the body, not a drag, drops a crumb there, on the pane: the
 // plane through the middle square to the view clicked, drawn wide enough to hold it. A
 // click under the ground drops its crumb from the middle's height, straight above, to fall
@@ -1510,9 +1526,9 @@ const drop=(V,X,Y)=>{const a=(X-V.cx)/V.s,b=(V.cy-Y)/V.s;let p=add(mul(V.X,a),mu
   pane={X:V.X,Y:V.Y,D:V.D,h:max(1.25*now.reach,max(abs(a),abs(b))+.15),t:performance.now()};wake();if(calm)draw()};
 c.addEventListener("pointerup",e=>{if(grip&&!grip.moved&&(grip.turn||grip.cam)){const[X,Y]=local(e);drop(grip.V,X,Y)}
   // a direction let go is set, and a foundling is judged
-  const set=grip&&grip.k;grip=null;if(set){solve();wake();draw()}});
+  const set=grip&&grip.k;grip=null;if(set){solve();soon()}});
 c.addEventListener("keydown",e=>{const a={ArrowLeft:[[0,0,1],-1],ArrowRight:[[0,0,1],1],ArrowUp:[[1,0,0],-1],ArrowDown:[[1,0,0],1]}[e.key];
-  if(!a)return;e.preventDefault();pose=mm(turn(a[0],a[1]*P/360),pose);solve();draw()});
+  if(!a)return;e.preventDefault();pose=rot(mm(turn(a[0],a[1]*P/360),pose));solve();soon()});
 
 // The buttons: the parts the body takes where the world leaves a circle; another body;
 // the world's four directions, each on or off, and turned by the arrow keys while held.
