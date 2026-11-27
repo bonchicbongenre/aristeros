@@ -12,12 +12,12 @@ body{margin:0;padding:3rem 16px 1.4rem;min-height:100svh;box-sizing:border-box;d
 main,.by{width:100%;max-width:68rem;margin:0 auto}
 main{flex:1}
 nav,.label{max-width:34rem}
-main.beside{display:grid;grid-template-columns:auto 24rem;grid-template-rows:1fr auto auto;column-gap:40px;flex:none;margin-bottom:auto}
+main.beside{display:grid;grid-template-columns:auto 24rem;grid-template-rows:auto 1fr auto;column-gap:40px;flex:none;margin-bottom:auto}
 main.beside canvas{grid-column:1;grid-row:1/4}
 main{position:relative}
 #square{position:absolute;transform:translateX(-100%);font:.8rem/1.6 var(--typewriter)}
 #square[hidden]{display:none}
-main.beside nav{grid-column:2;grid-row:2;margin-top:0}
+main.beside nav{grid-column:2;grid-row:1;margin-top:0}
 main.beside .label{grid-column:2;grid-row:3;margin-bottom:-.21em}
 canvas{display:block;touch-action:none;cursor:grab}
 canvas:active{cursor:grabbing}
@@ -873,10 +873,10 @@ const square=()=>{const T=squared(),Rr=mm(T,tr(cam)),c0=max(-1,min(1,(Rr[0]+Rr[4
 let CW,CH,dpr;
 // The page is seen whole on a full screen, without scrolling, and centred. Wide: the two
 // elevations stand stacked beside the plan, and the buttons and the label go beneath the
-// drawing, or, where that leaves the drawing larger, to its right at its foot, as a
-// museum's label hangs; the whole is as wide as what is in it. A line is held for the
-// tally before it appears. Narrow: the elevations side by side beneath the plan, and the
-// rest beneath them.
+// drawing, or, where that leaves the drawing larger, to its right: the buttons at its head
+// and the label at its foot, as a museum's label hangs, so a label grown by a line moves no
+// button; the whole is as wide as what is in it. A line is held for the tally before it
+// appears. Narrow: the elevations side by side beneath the plan, and the rest beneath them.
 const SIDE=384,GAP=40,MAIN=1088,PLAN=1400;
 function size(){dpr=devicePixelRatio||1;
   const page=(document.documentElement.clientWidth||c.parentNode.clientWidth+32||632)-32,wide=page>=648,px=v=>parseFloat(v),
@@ -907,11 +907,14 @@ const at=(V,p)=>[V.cx+dot(V.X,p)*V.s,V.cy-dot(V.Y,p)*V.s];
 // more of the paper as the light leaves it, to under a half; a second set across them past
 // two thirds of shade; over the paper a hand-laid wash of the glaze (tint); an ink outline
 // where the surface turns away, near a page pixel wide (how far the edge is, from how fast
-// the normal turns toward it).
-const SHADE=`float hatch(float s,float cov){float f=s*px/(4.5*dp),d=abs(fract(f+.5)-.5)/max(fwidth(f),1e-5),hw=cov*2.25*dp;
-  return clamp(hw+.5-d,0.,1.)*clamp(2.*hw,0.,1.);}
-vec3 engraved(vec3 n,float s1,float s2){float t=clamp(1.-max(dot(n,normalize(vec3(-.45,.55,.7))),0.)/.95,0.,1.);
-  return mix(tint,ink,max(hatch(s1,.46*pow(t,1.2)),hatch(s2,.36*clamp((t-.66)/.34,0.,1.))));}
+// the normal turns toward it). Where a part's lines crowd closer than a pixel can tell
+// apart (a limb seen end on, its length foreshortened), they fade to the share of paper
+// they cover, so the tone holds and they do not fill solid.
+const SHADE=`float hatch(float s,float cov){float f=s*px/(4.5*dp),w=max(fwidth(f),1e-5),d=abs(fract(f+.5)-.5)/w,hw=cov*2.25*dp;
+  return mix(clamp(hw+.5-d,0.,1.)*clamp(2.*hw,0.,1.),cov,smoothstep(.2,.5,w));}
+float lines(vec3 n,float s1,float s2){float t=clamp(1.-max(dot(n,normalize(vec3(-.45,.55,.7))),0.)/.95,0.,1.);
+  return max(hatch(s1,.46*pow(t,1.2)),hatch(s2,.36*clamp((t-.66)/.34,0.,1.)));}
+vec3 engraved(vec3 n,float s1,float s2){return mix(tint,ink,lines(n,s1,s2));}
 float outline(vec3 n){return 1.-smoothstep(.6,1.3,.5*n.z/max(fwidth(n.z),1e-5)/dp);}`,
   // a turned body, drawn as what it is: its profile about its axis is measured once (T:
   // how far each point of the half-plane (distance from the axis, height along it) lies
@@ -934,12 +937,88 @@ void main(){vec3 x=vec3(p,1.7*R);float d=1.;for(int i=0;i<110;i++){d=f(x);if(d<.
   vec3 c=ey.w>.5&&de<.062?(de<.026?ik:w):engraved(n,z,dot(x,q));
   c=mix(c,ink,outline(n));
   gl_FragDepth=.5-x.z/6.;o=vec4(c,1.);o2=vec4(n*.5+.5,1.);if(miss)discard;}`,
+  // (W3i) where parts meet, the joins drawn rounded (F, below). A part with a join to round
+  // draws the points of the rounded surface nearest to it: on its own surface with the
+  // rounded shading, and beside its outline by walking the line of sight, out to g beyond
+  // itself, the most the rounding can add there (nb: where its list starts, how long it is,
+  // and g)
   BV=`#version 300 es
-in vec2 q;in vec4 b,e0,e1,e2,e3;uniform float l;out vec2 p;flat out vec4 E0,E1,E2,E3;
-void main(){p=mix(b.xy,b.zw,q);E0=e0;E1=e1;E2=e2;E3=e3;gl_Position=vec4(p/l,0.,1.);}`,
+in vec2 q;in vec4 b,e0,e1,e2,e3;in vec4 nb;uniform float l,kb;out vec2 p;flat out vec4 E0,E1,E2,E3;flat out vec4 NB;flat out int I;
+void main(){float g=kb>0.&&nb.y>.5?nb.z+1e-3:0.;p=mix(b.xy-g,b.zw+g,q);E0=e0;E1=e1;E2=e2;E3=e3;NB=nb;I=gl_InstanceID;gl_Position=vec4(p/l,0.,1.);}`,
   BF=`#version 300 es
-precision highp float;in vec2 p;flat in vec4 E0,E1,E2,E3;uniform vec3 w,ik,pc[5],ink,tint;uniform float px,dp;layout(location=0) out vec4 o;layout(location=1) out vec4 o2;${SHADE}
-void main(){vec3 ro=vec3(p,9.),rd=vec3(0,0,-1),n=vec3(0,0,1);float t,s1,s2;bool miss;
+precision highp float;in vec2 p;flat in vec4 E0,E1,E2,E3;flat in vec4 NB;flat in int I;uniform vec3 w,ik,pc[5],ink,tint;uniform float px,dp,kb;
+uniform highp sampler2D Pt,Hd,Nb;uniform float walk;layout(location=0) out vec4 o;layout(location=1) out vec4 o2;${SHADE}
+// a part's distance: an ellipsoid's by Quilez's bound, a round cone's exactly (his too)
+float sdE(vec3 x,vec4 A0,vec4 A1,vec4 A2,vec4 A3){vec3 oc=x-A0.xyz,u=vec3(dot(A1.xyz,oc),dot(A2.xyz,oc),dot(A3.xyz,oc));
+  float k0=length(u),k1=length(u*vec3(length(A1.xyz),length(A2.xyz),length(A3.xyz)));return k0*(k0-1.)/max(k1,1e-9);}
+float sdC(vec3 p,vec3 a,vec3 b,float r1,float r2){vec3 ba=b-a;float l2=dot(ba,ba),rr=r1-r2,a2=l2-rr*rr,il2=1./l2;vec3 pa=p-a;
+  float y=dot(pa,ba),z=y-l2;vec3 xv=pa*l2-ba*y;float x2=dot(xv,xv),y2=y*y*l2,z2=z*z*l2,k=sign(rr)*rr*rr*x2;
+  if(sign(z)*a2*z2>k)return sqrt(x2+z2)*il2-r2;if(sign(y)*a2*y2<k)return sqrt(x2+y2)*il2-r1;return(sqrt(x2*a2*il2)+y*rr)*il2-r1;}
+float sdP(vec3 x,vec4 A0,vec4 A1,vec4 A2,vec4 A3){return A0.w<.5?sdE(x,A0,A1,A2,A3):sdC(x,A0.xyz,A1.xyz,A1.w,A2.x);}
+vec4 at(int j,int k){return texelFetch(Pt,ivec2(k,j),0);}
+float sdJ(vec3 x,int j){return sdP(x,at(j,1),at(j,2),at(j,3),at(j,4));}
+// a neighbour: its part, j (one of this part's own piece as -(j+1); of another piece, the
+// first of that piece's run as j+.5), and the width k of the rounding where the two meet
+vec2 nbAt(int k){int s=int(NB.x)+k;return texelFetch(Nb,ivec2(s%4096,s/4096),0).rg;}
+// where along a part's own lines a point lies (s1, s2): an ellipsoid's two axes lying most
+// in the view's plane, in the world's measure; a limb's length, and round it
+vec2 coords(vec3 x,vec4 A0,vec4 A1,vec4 A2,vec4 A3){
+  if(A0.w<.5){vec3 oc=x-A0.xyz,u=vec3(dot(A1.xyz,oc),dot(A2.xyz,oc),dot(A3.xyz,oc)),m=1./vec3(length(A1.xyz),length(A2.xyz),length(A3.xyz)),U=u*m,zz=abs(vec3(A1.z,A2.z,A3.z))*m;
+    if(zz.x<=zz.y&&zz.x<=zz.z)return vec2(U.x,zz.y<=zz.z?U.y:U.z);if(zz.y<=zz.z)return vec2(U.y,zz.x<=zz.z?U.x:U.z);return vec2(U.z,zz.x<=zz.y?U.x:U.y);}
+  vec3 ba=A1.xyz-A0.xyz,xa=x-A0.xyz,q=cross(ba,vec3(0,0,1));q=dot(q,q)>1e-10?normalize(q):vec3(1,0,0);return vec2(dot(xa,ba)/length(ba),dot(xa,q));}
+// The rounded distance. Each piece's distance is its parts' least (a limb's segments are
+// one piece). The nearest piece's, d1, less a bump for every other piece p whose distance
+// comes within its pair's width k of d1: (k - (dp - d1))^2 / 4k, a quarter of k where the
+// two are equal and nothing at k. So a join is rounded over a width in proportion to the
+// pair, and nothing is moved farther than k from where two pieces meet. Taken over the set
+// of pieces, whichever is named first. A part whose bounding ball lies beyond reach of
+// mattering is passed by unmeasured. Also kept: the nearest part, own.
+float bump(float D,float k){return D<k?(k-D)*(k-D)/(4.*k):0.;}
+float F(vec3 x,out int own){float mine=sdP(x,E0,E1,E2,E3),near=mine,gm_[12],gk_[12];int ng=0,c=int(NB.y),q=-1;own=I;
+  for(int k=0;k<24;k++){if(k>=c)break;vec2 e=nbAt(k);float v=e.x;int j=v<0.?int(-v+.5)-1:int(v);
+    if(v>=0.&&fract(v)>.25&&ng<12){gm_[ng]=1e9;gk_[ng]=e.y;ng++;}
+    vec4 B=at(j,5);float lb=length(x-B.xyz)-B.w;
+    if(v<0.){if(lb<mine){float d=sdJ(x,j);mine=min(mine,d);if(d<near){near=d;own=j;q=-1;}}continue;}
+    if(ng==0||lb>=min(near+e.y,gm_[ng-1]))continue;
+    float d=sdJ(x,j);gm_[ng-1]=min(gm_[ng-1],d);if(d<near){near=d;own=j;q=ng-1;}}
+  float s=q>=0?bump(mine-near,gk_[q]):0.;
+  for(int r=0;r<12;r++){if(r>=ng)break;if(r!=q)s+=bump(gm_[r]-near,gk_[r]);}
+  return near-s;}
+// each part's distance with the way it rises: an ellipsoid's, the normal of its own level
+// surface; a limb's, away from its axis, leaned by its taper, or away from an end ball's
+// centre
+float sdEg(vec3 x,vec4 A0,vec4 A1,vec4 A2,vec4 A3,out vec3 gr){vec3 oc=x-A0.xyz,u=vec3(dot(A1.xyz,oc),dot(A2.xyz,oc),dot(A3.xyz,oc));
+  float k0=length(u),k1=length(u*vec3(length(A1.xyz),length(A2.xyz),length(A3.xyz)));gr=normalize(A1.xyz*u.x+A2.xyz*u.y+A3.xyz*u.z+1e-12);return k0*(k0-1.)/max(k1,1e-9);}
+float sdCg(vec3 p,vec3 a,vec3 b,float r1,float r2,out vec3 gr){vec3 ba=b-a;float l2=dot(ba,ba),rr=r1-r2,a2=l2-rr*rr,il2=1./l2;vec3 pa=p-a;
+  float y=dot(pa,ba),z=y-l2;vec3 xv=pa*l2-ba*y;float x2=dot(xv,xv),y2=y*y*l2,z2=z*z*l2,k=sign(rr)*rr*rr*x2;
+  if(sign(z)*a2*z2>k){gr=normalize(p-b+1e-12);return sqrt(x2+z2)*il2-r2;}
+  if(sign(y)*a2*y2<k){gr=normalize(pa+1e-12);return sqrt(x2+y2)*il2-r1;}
+  float l=sqrt(l2);vec3 w=ba/l,rad=pa-w*dot(pa,w);float rl=length(rad);gr=(rl>1e-9?rad/rl:vec3(0))*sqrt(a2)/l+w*rr/l;
+  return(sqrt(x2*a2*il2)+y*rr)*il2-r1;}
+float sdPg(vec3 x,vec4 A0,vec4 A1,vec4 A2,vec4 A3,out vec3 gr){return A0.w<.5?sdEg(x,A0,A1,A2,A3,gr):sdCg(x,A0.xyz,A1.xyz,A1.w,A2.x,gr);}
+float sdJg(vec3 x,int j,out vec3 gr){return sdPg(x,at(j,1),at(j,2),at(j,3),at(j,4),gr);}
+// the rounded surface's normal at x, in one pass: the nearest part's way of rising, leaned
+// toward each other piece's by its bump's slope, (k - D)/2k
+vec3 grad(vec3 x){vec3 gm,gn,gg[12];float mine=sdPg(x,E0,E1,E2,E3,gm),near=mine,dd[12],kk[12];int ng=0,c=int(NB.y),q=-1;gn=gm;
+  for(int k=0;k<24;k++){if(k>=c)break;vec2 e=nbAt(k);float v=e.x;int j=v<0.?int(-v+.5)-1:int(v);
+    if(v>=0.&&fract(v)>.25&&ng<12){dd[ng]=1e9;kk[ng]=e.y;gg[ng]=vec3(0);ng++;}
+    vec4 B=at(j,5);float lb=length(x-B.xyz)-B.w;vec3 g;
+    if(v<0.){if(lb<mine){float d=sdJg(x,j,g);if(d<mine){mine=d;gm=g;}if(d<near){near=d;gn=g;q=-1;}}continue;}
+    if(ng==0||lb>=min(near+e.y,dd[ng-1]))continue;
+    float d=sdJg(x,j,g);if(d<dd[ng-1]){dd[ng-1]=d;gg[ng-1]=g;}if(d<near){near=d;gn=g;q=ng-1;}}
+  vec3 G=gn;
+  if(q>=0){float D=mine-near;if(D<kk[q])G+=(kk[q]-D)/(2.*kk[q])*(gm-gn);}
+  for(int r=0;r<12;r++){if(r>=ng)break;if(r==q)continue;float D=dd[r]-near;if(D<kk[r])G+=(kk[r]-D)/(2.*kk[r])*(gg[r]-gn);}
+  return normalize(G);}
+// whether the line of sight passes within g of this part: a line along the view's depth
+// lies as near a limb as its point does to the limb's segment seen flat; an ellipsoid is
+// met by it grown by g in its every axis (grown by its least axis's proportion, which
+// holds that much and more)
+bool within(float g){if(E0.w<.5){vec3 oc=vec3(p,9.)-E0.xyz,O=vec3(dot(E1.xyz,oc),dot(E2.xyz,oc),dot(E3.xyz,oc)),d=-vec3(E1.z,E2.z,E3.z);
+    float s=1.+g*max(length(E1.xyz),max(length(E2.xyz),length(E3.xyz))),A=dot(d,d),B=dot(O,d);return B*B-A*(dot(O,O)-s*s)>=0.;}
+  vec2 a=E0.xy,ba=E1.xy-a;float h=clamp(dot(p-a,ba)/max(dot(ba,ba),1e-12),0.,1.);return length(p-a-ba*h)<=max(E1.w,E2.x)+g;}
+// this part's own exact surface along the line of sight: where, its normal, and its lines
+bool hard(vec3 ro,vec3 rd,out float t,out vec3 n,out float s1,out float s2){bool miss;n=vec3(0,0,1);
   if(E0.w<.5){vec3 oc=ro-E0.xyz,O=vec3(dot(E1.xyz,oc),dot(E2.xyz,oc),dot(E3.xyz,oc)),d=-vec3(E1.z,E2.z,E3.z);
     float A=dot(d,d),B=dot(O,d),h=B*B-A*(dot(O,O)-1.);miss=h<0.;t=(-B-sqrt(max(h,0.)))/A;vec3 u=O+t*d;
     n=normalize(E1.xyz*u.x+E2.xyz*u.y+E3.xyz*u.z);
@@ -961,6 +1040,33 @@ void main(){vec3 ro=vec3(p,9.),rd=vec3(0,0,-1),n=vec3(0,0,1);float t,s1,s2;bool 
     miss=t<0.;vec3 x=ro+t*rd-pa;float bb=m0;
     // round the limb, and along it
     vec3 q=cross(ba,vec3(0,0,1));q=dot(q,q)>1e-10?normalize(q):vec3(1,0,0);s1=dot(x,ba)/sqrt(bb);s2=dot(x,q);}
+  return !miss;}
+void main(){vec3 ro=vec3(p,9.),rd=vec3(0,0,-1),n;float t,s1,s2;bool miss=!hard(ro,rd,t,n,s1,s2);
+  // g: the most the rounding can add beyond this part, three quarter-widths of its widest join
+  if(kb>0.&&NB.y>.5){float g=NB.z+1e-4,z0,z1;
+    if(E0.w<.5){vec3 L=vec3(length(E1.xyz),length(E2.xyz),length(E3.xyz)),zz=vec3(E1.z,E2.z,E3.z)/(L*L);float hz=length(zz);z0=E0.z-hz;z1=E0.z+hz;}
+    else{z0=min(E0.z-E1.w,E1.z-E2.x);z1=max(E0.z+E1.w,E1.z+E2.x);}
+    // the hard surface here (12 where there is none): the rounded one is never behind it,
+    // so a part whose front lies behind it by more than g has nothing here to draw, and a
+    // part whose own surface here lies behind it is hidden here (within 2e-3: the hard depth
+    // comes back coarse where a card's depth is kept in fewer than 24 bits)
+    float tH=6.*texelFetch(Hd,ivec2(gl_FragCoord.xy),0).r+6.;
+    if(9.-z1-g>tH+2e-3||!miss&&t>tH+2e-3||miss&&!within(g))miss=true;
+    // on its own surface, the shading rounded, at the hard depth (the shape moves by under
+    // g there, unseen); its own lines
+    else if(!miss)n=grad(ro+t*rd);
+    // while a hand turns the cameras, the outline's rounding waits for it to let go
+    else if(walk<.5){}
+    // beside its outline where the hard surface behind lies within its own depth, a join
+    // seen face on: the rounded shading there does the work
+    else if(tH<9.-z0+g){}
+    // beside its own outline, the rounded shape, walked: at most 40 steps toward the part,
+    // 16 on the rounded surface near it; drawn only where this part is the nearest
+    else{t=9.-z1-g;float te=min(9.-z0+g,tH+2e-3);int own=I;
+      for(int k=0,k2=0;k<40&&k2<16&&t<te;k++){vec3 x=ro+t*rd;float di=sdP(x,E0,E1,E2,E3);
+        if(di>g){t+=max((di-g)*.9,2e-5);continue;}
+        k2++;float f=F(x,own);if(f<4e-5){miss=own!=I;break;}t+=max(f*.9,2e-5);}
+      if(!miss){vec3 x=ro+t*rd;n=grad(x);vec2 c1=coords(x,E0,E1,E2,E3);s1=c1.x;s2=c1.y;}}}
   gl_FragDepth=.5-(9.-t)/6.;
   // an eye keeps its own colours whatever the theme: a white, a dark pupil, a dark rim
   bool eye=E0.w<.5&&E2.w>.5;
@@ -992,7 +1098,9 @@ function glUp(){try{glc=document.createElement("canvas");
   PB=prog(BV,BF);PS=prog(SV,SF);PR=prog(RV,RF);PC=prog(CV,CF);
   for(const k of["C","Nm","Dp","ink","k","off"])U["c"+k]=g.getUniformLocation(PC,k);
   U.fb=g.createFramebuffer();U.fc=g.createTexture();U.fn=g.createTexture();U.fd=g.createTexture();U.fs=0;
-  for(const k of["l","w","ik","pc","ink","tint","px","dp"])U[k]=g.getUniformLocation(PB,k);for(const k of["l","z","k"])U["s"+k]=g.getUniformLocation(PS,k);
+  for(const k of["l","w","ik","pc","ink","tint","px","dp","kb","Pt","Hd","Nb","walk"])U[k]=g.getUniformLocation(PB,k);
+  // (W3i) the hard surface drawn first, alone, for its depth
+  U.fbH=g.createFramebuffer();U.fh=g.createTexture();for(const k of["l","z","k"])U["s"+k]=g.getUniformLocation(PS,k);
   for(const k of["l","w","a","R","T","ik","ey","ink","tint","px","dp"])U["r"+k]=g.getUniformLocation(PR,k);
   // the body: one quad, and for each part its box and four vec4s, instanced
   const quad=g.createBuffer();g.bindBuffer(g.ARRAY_BUFFER,quad);g.bufferData(g.ARRAY_BUFFER,new Float32Array([0,0,1,0,0,1,1,1]),g.STATIC_DRAW);
@@ -1003,6 +1111,8 @@ function glUp(){try{glc=document.createElement("canvas");
   vaoB=g.createVertexArray();g.bindVertexArray(vaoB);
   a=g.getAttribLocation(PB,"q");g.enableVertexAttribArray(a);g.vertexAttribPointer(a,2,g.FLOAT,false,0,0);
   U.at=["b","e0","e1","e2","e3"].map(nm=>{a=g.getAttribLocation(PB,nm);g.enableVertexAttribArray(a);g.vertexAttribDivisor(a,1);return a});
+  // (W3i) each part's neighbours, where it starts in the list and how many
+  U.nbA=g.getAttribLocation(PB,"nb");g.vertexAttribDivisor(U.nbA,1);U.nbB=g.createBuffer();U.nbT=g.createTexture();
   vaoS=g.createVertexArray();g.bindVertexArray(vaoS);bufS=g.createBuffer();g.bindBuffer(g.ARRAY_BUFFER,bufS);
   a=g.getAttribLocation(PS,"s");g.enableVertexAttribArray(a);g.vertexAttribPointer(a,4,g.FLOAT,false,20,0);
   a=g.getAttribLocation(PS,"u");g.enableVertexAttribArray(a);g.vertexAttribPointer(a,1,g.FLOAT,false,20,16);g.bindVertexArray(null);gl=g}catch(e){gl=null}}
@@ -1013,9 +1123,13 @@ function glUp(){try{glc=document.createElement("canvas");
 // points of the circle about the part's azimuth, each by the ellipsoid's own measure
 // scaled by its least semi-axis, never more than the distance. Far from a part, its
 // distance from the ball that holds the part is taken instead. Where the world's group
-// has the mirror across the axis, the profile is its own mirror image.
-function profile(){const a=now.G.axis,e=across(a),g=cross(a,e),R=now.reach*1.06,NR=96,NZ=192,d=new Float32Array(NR*NZ).fill(9);
-  for(const q of now.frag){const c=q.k?mul(add(q.p[0],q.p[1]),.5):q.c,b=q.k?len(sub(q.p[0],q.p[1]))/2+max(q.r,q.r2):max(...q.ax),
+// has the mirror across the axis, the profile is its own mirror image. (W3i) Drawn, its
+// joins are rounded as a body's parts are (dR): each part's distance kept, its pieces' least
+// taken, and the nearest piece's less a bump for each other within its pair's width;
+// eating and being touched keep the hard profile (d).
+function profile(){const a=now.G.axis,e=across(a),g=cross(a,e),R=now.reach*1.06,NR=96,NZ=192,d=new Float32Array(NR*NZ).fill(9),
+    F_=now.frag,nq=F_.length,dq=new Float32Array(NR*NZ*nq).fill(9);
+  F_.forEach((q,qi)=>{const c=q.k?mul(add(q.p[0],q.p[1]),.5):q.c,b=q.k?len(sub(q.p[0],q.p[1]))/2+max(q.r,q.r2):max(...q.ax),
       zc=dot(a,c),xc=dot(e,c),yc=dot(g,c),rc=Math.hypot(xc,yc),fc=atan2(yc,xc),Rt=q.k?0:tr(q.R),mn=q.k?0:min(...q.ax),
       // a limb, swept about the axis, is exactly its balls' discs in the half-plane: each
       // ball about its distance from the axis and its height, of its own radius
@@ -1023,15 +1137,23 @@ function profile(){const a=now.G.axis,e=across(a),g=cross(a,e),R=now.reach*1.06,
         return[len(sub(p,mul(a,h))),h,q.r+(q.r2-q.r)*t]}):0,
       dist=p=>{const v=mv(Rt,sub(p,q.c));return(Math.hypot(v[0]/q.ax[0],v[1]/q.ax[1],v[2]/q.ax[2])-1)*mn};
     for(let j=0;j<NZ;j++){const z=(2*(j+.5)/NZ-1)*R;for(let i=0;i<NR;i++){const r=(i+.5)/NR*R,k=j*NR+i,off=Math.hypot(r-rc,z-zc)-b;
-      if(off>.08){if(off<d[k])d[k]=off;continue}
+      if(off>.08){if(off<d[k])d[k]=off;dq[nq*k+qi]=off;continue}
       let m=9;
       if(q.k)for(const[u,h,s]of discs){const v=Math.hypot(r-u,z-h)-s;if(v<m)m=v}
       // an ellipsoid: the circle's nearest point, among 65 about the part's own azimuth
       else{const w=r>b+.1?Math.asin(min(1,(b+.1)/r)):P;
         for(let s=0;s<=64;s++){const f=fc+w*(s/32-1),v=dist(add(mul(a,z),add(mul(e,r*cos(f)),mul(g,r*sin(f)))));if(v<m)m=v}}
-      if(m<d[k])d[k]=m}}}
-  if(/h$/.test(now.G.name))for(let j=0;j<NZ/2;j++)for(let i=0;i<NR;i++){const k=j*NR+i,o=(NZ-1-j)*NR+i;d[k]=d[o]=min(d[k],d[o])}
-  return{d,R,NR,NZ}}
+      dq[nq*k+qi]=m;if(m<d[k])d[k]=m}}});
+  // its pieces (a limb's segments, end to end at one radius, are one), and each part's thickness
+  const up=F_.map((_,i)=>i),root=i=>up[i]==i?i:(up[i]=root(up[i])),T=F_.map(thick),ends=q=>[[q.p[0],q.r],[q.p[1],q.r2]];
+  for(let i=0;i<nq;i++)if(F_[i].k==1)for(let j=i+1;j<nq;j++)if(F_[j].k==1&&ends(F_[i]).some(([u,ru])=>ends(F_[j]).some(([v,rv])=>len(sub(u,v))<1e-6&&abs(ru-rv)<1e-6)))up[root(i)]=root(j);
+  const dR=new Float32Array(NR*NZ),pm=new Float32Array(nq),pt=new Float32Array(nq);
+  for(let k=0;k<NR*NZ;k++){pm.fill(9);let p1=-1;
+    for(let qi=0;qi<nq;qi++){const v=dq[nq*k+qi],p=root(qi);if(v<pm[p]){pm[p]=v;pt[p]=T[qi]}if(p1<0||pm[p]<pm[p1])p1=p}
+    let s=0;for(let p=0;p<nq;p++){if(p==p1||root(p)!=p)continue;const kk=KC*min(pt[p],pt[p1]),D=pm[p]-pm[p1];if(D<kk)s+=(kk-D)*(kk-D)/(4*kk)}
+    dR[k]=pm[p1]-s}
+  if(/h$/.test(now.G.name))for(let j=0;j<NZ/2;j++)for(let i=0;i<NR;i++){const k=j*NR+i,o=(NZ-1-j)*NR+i;d[k]=d[o]=min(d[k],d[o]);dR[k]=dR[o]=min(dR[k],dR[o])}
+  return{d,dR,R,NR,NZ}}
 // a part in a view's own frame (right, up, toward the camera), with its box on the screen:
 // an ellipsoid as its centre and the rows of diag(1/a) R^T Q^T, so |M (x - c)| = 1 on it;
 // a limb as its two ends and their radii; the ball as an ellipsoid of one radius
@@ -1052,6 +1174,91 @@ const unit3=s=>(s.match(/\d+/g)||[0,0,0]).slice(0,3).map(v=>v/255);
 function cards(){const n=V=>min(2048,round(V.r[2]*dpr*1.5)),[p,a,b]=VIEWS.map(n),W=p+max(a,b),H=max(p,a+b);
   VIEWS[0].card=[0,0,p];VIEWS[1].card=[p,0,a];VIEWS[2].card=[p,a,b];
   if(glc.width!=W||glc.height!=H){glc.width=W;glc.height=H}}
+// (W3i) Where parts meet, the joins are drawn rounded, each over a width in proportion to
+// the thinner of the two (KC, a half, times its thickness: an ellipsoid's least semi-axis,
+// a limb's mean radius; chosen), and only where the join can be seen. Each part's joins are
+// found once a body, from its unbent, unswung parts (joins, below). A join narrower than a
+// third of a pixel is left hard. KC at nothing draws every join hard.
+let KC=.5,nbKey=null;
+const thick=q=>q.k==1?(q.r+q.r2)/2:q.k==2?q.r:min(...q.ax),
+  // a part's distance, in plain arithmetic: an ellipsoid's by Quilez's bound, a round
+  // cone's exactly, a ball's (e: the part laid out as numbers)
+  sdN=(e,x,y,z)=>{if(e[0]==2)return Math.hypot(x,y,z)-e[1];
+    if(e[0]==0){const dx=x-e[1],dy=y-e[2],dz=z-e[3],u0=(e[4]*dx+e[5]*dy+e[6]*dz)/e[13],u1=(e[7]*dx+e[8]*dy+e[9]*dz)/e[14],u2=(e[10]*dx+e[11]*dy+e[12]*dz)/e[15],
+      k0=Math.hypot(u0,u1,u2),k1=Math.hypot(u0/e[13],u1/e[14],u2/e[15]);return k0*(k0-1)/max(k1,1e-9)}
+    const bx=e[4]-e[1],by=e[5]-e[2],bz=e[6]-e[3],r1=e[7],r2=e[8],l2=bx*bx+by*by+bz*bz,rr=r1-r2,a2=l2-rr*rr,il2=1/l2,
+      px_=x-e[1],py=y-e[2],pz=z-e[3],yy=px_*bx+py*by+pz*bz,zz=yy-l2,vx=px_*l2-bx*yy,vy=py*l2-by*yy,vz=pz*l2-bz*yy,
+      x2=vx*vx+vy*vy+vz*vz,y2=yy*yy*l2,z2=zz*zz*l2,k=Math.sign(rr)*rr*rr*x2;
+    if(Math.sign(zz)*a2*z2>k)return sqrt(x2+z2)*il2-r2;if(Math.sign(yy)*a2*y2<k)return sqrt(x2+y2)*il2-r1;return(sqrt(x2*a2*il2)+yy*rr)*il2-r1},
+  asNums=q=>q.k==0?[0,...q.c,...tr(q.R),...q.ax]:q.k==1?[1,...q.p[0],...q.p[1],q.r,q.r2]:[2,q.r],
+  FIB=Array.from({length:40},(_,i)=>{const z=1-2*(i+.5)/40,r=sqrt(1-z*z),f=i*2.39996;return[r*cos(f),r*sin(f),z]}),
+  skin=q=>q.k==2?FIB.map(u=>mul(u,q.r)):q.k==0?FIB.map(u=>add(q.c,mv(q.R,u.map((v,i)=>v*q.ax[i])))):
+    (()=>{const d=unit(sub(q.p[1],q.p[0])),e=across(d),f=cross(d,e),S=[];
+      for(let i=0;i<5;i++){const t=i/4,c=add(q.p[0],mul(sub(q.p[1],q.p[0]),t)),r=q.r+(q.r2-q.r)*t;for(let j=0;j<8;j++){const a=j*P/4;S.push(add(c,add(mul(e,r*cos(a)),mul(f,r*sin(a)))))}}
+      S.push(sub(q.p[0],mul(d,q.r)),add(q.p[1],mul(d,q.r2)));return S})();
+// The joins of a body's parts Q, whose group's elements are els, at pxm pixels to the
+// unit: each part's piece (root), the parts of its own piece it meets (hard), and the joins
+// rounded (soft, each with its width), closed under the group: wherever a join is found,
+// every turn and mirror of it is a join too, so the rounding keeps the body's symmetry
+// exactly, whatever the sampling found at the edge of being seen.
+function joins(Q,els,pxm){const n=Q.length,T=Q.map(thick),S=Q.map(skin),
+    B=Q.map(q=>q.k==1?[mul(add(q.p[0],q.p[1]),.5),len(sub(q.p[0],q.p[1]))/2+max(q.r,q.r2)]:q.k==2?[[0,0,0],q.r]:[q.c,max(...q.ax)]),
+    near=(i,j,m)=>{const[c,b]=B[i],[e,f]=B[j];return Math.hypot(c[0]-e[0],c[1]-e[1],c[2]-e[2])<b+f+m};
+  // a part's whole shape (ends and radii, or middle and quadric); parts with the same shape
+  // are one part listed twice (some creatures are), the first listed its rep
+  const shape=q=>q.k==1?[[...q.p[0],q.r],[...q.p[1],q.r2]].sort((a,b)=>a[0]-b[0]||a[1]-b[1]||a[2]-b[2]).flat()
+      :q.k==2?[q.r]:[...q.c,...[0,1,2].flatMap(i=>[0,1,2].map(j=>[0,1,2].reduce((s,l)=>s+q.R[3*i+l]*q.R[3*j+l]/(q.ax[l]*q.ax[l]),0)))],
+    F=Q.map(shape),gap=(a,b)=>a.length!=b.length?1:max(...a.map((v,i)=>abs(v-b[i]))),rep=Q.map((_,i)=>i);
+  for(let i=0;i<n;i++)for(let j=0;j<i;j++)if(rep[j]==j&&Q[j].k==Q[i].k&&near(i,j,0)&&gap(F[i],F[j])<1e-9){rep[i]=j;break}
+  // a limb's segments, end to end at one radius, are one piece, and a part listed twice is
+  // one: joined hard to each other
+  const up=[...Array(n).keys()],root=i=>up[i]==i?i:(up[i]=root(up[i])),ends=q=>[[q.p[0],q.r],[q.p[1],q.r2]];
+  for(let i=0;i<n;i++)if(rep[i]!=i)up[root(i)]=root(rep[i]);
+  for(let i=0;i<n;i++)if(Q[i].k==1)for(let j=i+1;j<n;j++)if(Q[j].k==1&&near(i,j,0)&&
+    ends(Q[i]).some(([a,ra])=>ends(Q[j]).some(([b,rb])=>len(sub(a,b))<1e-6&&abs(ra-rb)<1e-6)))up[root(i)]=root(j);
+  // the parts each part meets or nearly meets, by bounding balls
+  const C=Q.map(()=>[]);
+  for(let i=0;i<n;i++)for(let j=i+1;j<n;j++)if(near(i,j,KC*min(T[i],T[j]))){C[i].push(j);C[j].push(i)}
+  // nearest first, so a buried point finds what covers it soon
+  const dc=(i,j)=>{const[c]=B[i],[e]=B[j];return Math.hypot(c[0]-e[0],c[1]-e[1],c[2]-e[2])};C.forEach((L,i)=>L.sort((a,b)=>dc(i,a)-dc(i,b)));
+  // a join is rounded only where it can be seen: where a point of one part's surface lies
+  // outside every other part, on the body's outside, and within the pair's width of the
+  // other (the joins buried inside the body, where every copy's core meets every other,
+  // are left as they are)
+  // (a part's second listing does not bury its surface; joins are kept between reps)
+  const D=Q.map(asNums),seen=new Set(),pair=(i,j)=>{i=rep[i];j=rep[j];return i<j?i*n+j:j*n+i};
+  for(let i=0;i<n;i++)for(const s of S[i]){let out=true;const c=[];
+    for(const j of C[i]){if(rep[j]==rep[i])continue;const d=sdN(D[j],s[0],s[1],s[2]);if(d<=0){out=false;break}if(root(j)!=root(i)&&d<KC*min(T[i],T[j]))c.push(j)}
+    if(out)for(const j of c)seen.add(pair(i,j))}
+  // where each element sends each part, as a rep: by its middle on a grid of 1e-4, then its
+  // whole shape within 1e-6; else the nearest rep of all
+  const mid=i=>B[i][0],cell=c=>c.map(v=>Math.round(v*1e4)).join(),grid=new Map();
+  Q.forEach((q,i)=>{if(rep[i]==i){const c=cell(mid(i));grid.set(c,[...(grid.get(c)||[]),i])}});
+  const sends=els.map(g=>Q.map((q,i)=>{const h=act(g,q),f=shape(h),c=h.k==1?mul(add(h.p[0],h.p[1]),.5):h.k==2?[0,0,0]:h.c;
+    let best=-1,bd=1e-6;for(const j of grid.get(cell(c))||[])if(Q[j].k==q.k){const d=gap(F[j],f);if(d<bd){bd=d;best=j}}
+    if(best<0){bd=1e9;Q.forEach((p,j)=>{if(rep[j]==j&&p.k==q.k){const d=gap(F[j],f);if(d<bd){bd=d;best=j}}})}return best}));
+  for(const key of[...seen]){const i=Math.floor(key/n),j=key%n;for(const s of sends){const a=s[i],b=s[j];if(a>=0&&b>=0&&a!=b)seen.add(pair(a,b))}}
+  const hardL=Q.map(()=>[]),softL=Q.map(()=>[]);let soft=0;
+  for(let i=0;i<n;i++)for(const j of C[i]){if(j<i)continue;
+    if(root(i)==root(j)){if(near(i,j,0)){hardL[i].push(j);hardL[j].push(i)}continue}
+    const k=KC*min(T[i],T[j]);if(pxm*k<1/3||!seen.has(pair(i,j)))continue;
+    softL[i].push([j,k]);softL[j].push([i,k]);soft++}
+  return{root:Q.map((_,i)=>root(i)),rep,hardL,softL,soft,sends}}
+function nbUp(parts){if(now.body===nbKey&&U.nbk==KC&&U.nbn==parts.length)return;nbKey=now.body;
+  const Q=now.body.length==parts.length?now.body:parts,n=Q.length,{root:R_,hardL,softL,soft}=joins(Q,now.G.els||[I3],VIEWS[0].card[2]/(2*L)),root=i=>R_[i],
+    L_=[],nb=new Float32Array(4*n);let most=0;
+  for(let i=0;i<n;i++){const st=L_.length;let g=0;for(const j of hardL[i])L_.push([-(j+1),0]);
+    // the other pieces in runs, each run's width its widest pair's; how far beyond itself
+    // the part can draw, three quarter-widths of its widest join (where three pieces meet)
+    const by={};for(const[j,k]of softL[i])(by[root(j)]=by[root(j)]||[]).push([j,k]);
+    for(const run of Object.values(by)){const kk=max(...run.map(e=>e[1]));g=max(g,.75*kk);run.forEach(([j],m)=>L_.push([m?j:j+.5,kk]))}
+    // a part with no join to round takes its exact surface
+    nb.set([st,softL[i].length?L_.length-st:0,g,0],4*i);most=max(most,L_.length-st)}
+  gl.bindBuffer(gl.ARRAY_BUFFER,U.nbB);gl.bufferData(gl.ARRAY_BUFFER,nb,gl.DYNAMIC_DRAW);
+  const W=4096,H=max(1,Math.ceil(L_.length/W)),t=new Float32Array(2*W*H);L_.forEach((e,i)=>t.set(e,2*i));
+  gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,U.nbT);gl.texImage2D(gl.TEXTURE_2D,0,gl.RG32F,W,H,0,gl.RG,gl.FLOAT,t);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);gl.activeTexture(gl.TEXTURE0);
+  U.nbn=n;U.nbk=KC;U.nbs=soft;U.most=most}
 // one view, drawn in WebGL in its place on the card
 function glView(V,parts,fresh,R){const side=V.r[2],[ox,oy,N]=V.card,
     style=k=>{gl.uniform3fv(U[k+"ink"],col.inkv);gl.uniform3fv(U[k+"tint"],col.tint);gl.uniform1f(U[k+"px"],N/(2*L));gl.uniform1f(U[k+"dp"],N/side)};
@@ -1061,25 +1268,68 @@ function glView(V,parts,fresh,R){const side=V.r[2],[ox,oy,N]=V.card,
       gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST)}
     gl.bindFramebuffer(gl.FRAMEBUFFER,U.fb);
     gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,U.fc,0);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT1,gl.TEXTURE_2D,U.fn,0);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.TEXTURE_2D,U.fd,0);gl.drawBuffers([gl.COLOR_ATTACHMENT0,gl.COLOR_ATTACHMENT1])}
+    gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.TEXTURE_2D,U.fd,0);gl.drawBuffers([gl.COLOR_ATTACHMENT0,gl.COLOR_ATTACHMENT1]);
+    // (W3i) the hard surface's depth, a card of its own
+    gl.bindTexture(gl.TEXTURE_2D,U.fh);gl.texImage2D(gl.TEXTURE_2D,0,gl.DEPTH_COMPONENT24,N,N,0,gl.DEPTH_COMPONENT,gl.UNSIGNED_INT,null);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+    gl.bindFramebuffer(gl.FRAMEBUFFER,U.fbH);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.TEXTURE_2D,U.fh,0);
+    gl.drawBuffers([gl.NONE]);gl.readBuffer(gl.NONE)}
   gl.bindFramebuffer(gl.FRAMEBUFFER,U.fb);gl.viewport(0,0,N,N);gl.clearColor(0,0,0,0);
   gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.depthFunc(gl.LESS);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
-  if(turned()){// its profile, measured once for the body and kept on the card
-    if(!now.up){now.up=1;const p=now.rev||(now.rev=profile());gl.bindTexture(gl.TEXTURE_2D,U.tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.R16F,p.NR,p.NZ,0,gl.RED,gl.FLOAT,p.d)}
+  // (W3i) a still body is drawn once and kept: its colours, normals and depth copied to a
+  // card of the view's own, and copied back while nothing about it changes
+  if(V.kN!=N){V.kN=N;V.kept=false;if(!V.kfb){V.kfb=gl.createFramebuffer();V.kc=gl.createTexture();V.kn=gl.createTexture();V.kd=gl.createTexture()}
+    for(const[t,f,i,ty]of[[V.kc,gl.RGBA8,gl.RGBA,gl.UNSIGNED_BYTE],[V.kn,gl.RGBA8,gl.RGBA,gl.UNSIGNED_BYTE],[V.kd,gl.DEPTH_COMPONENT24,gl.DEPTH_COMPONENT,gl.UNSIGNED_INT]]){
+      gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,f,N,N,0,i,ty,null);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST)}
+    gl.bindFramebuffer(gl.FRAMEBUFFER,V.kfb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,V.kc,0);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT1,gl.TEXTURE_2D,V.kn,0);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.TEXTURE_2D,V.kd,0);gl.bindFramebuffer(gl.FRAMEBUFFER,U.fb)}
+  const copy=(from,to)=>{gl.bindFramebuffer(gl.READ_FRAMEBUFFER,from);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,to);
+    gl.readBuffer(gl.COLOR_ATTACHMENT0);gl.drawBuffers([gl.COLOR_ATTACHMENT0,gl.NONE]);gl.blitFramebuffer(0,0,N,N,0,0,N,N,gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT,gl.NEAREST);
+    gl.readBuffer(gl.COLOR_ATTACHMENT1);gl.drawBuffers([gl.NONE,gl.COLOR_ATTACHMENT1]);gl.blitFramebuffer(0,0,N,N,0,0,N,N,gl.COLOR_BUFFER_BIT,gl.NEAREST);
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0,gl.COLOR_ATTACHMENT1]);gl.bindFramebuffer(gl.FRAMEBUFFER,U.fb)};
+  // the outline's rounding waits while a hand turns the cameras or they swing to square;
+  // what was kept remembers which, so letting go draws it whole once
+  const walkNow=!(grip&&grip.cam)&&!sq;
+  if(V.kept&&!fresh&&V.kw==walkNow)copy(V.kfb,U.fb);
+  else{V.kw=walkNow;if(turned()){// its profile, measured once for the body and kept on the card
+    if(now.up!=1+KC){now.up=1+KC;const p=now.rev||(now.rev=profile());gl.bindTexture(gl.TEXTURE_2D,U.tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.R16F,p.NR,p.NZ,0,gl.RED,gl.FLOAT,KC>0?p.dR:p.d)}
     const a=now.G.axis;gl.useProgram(PR);gl.bindVertexArray(vaoQ);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,U.tex);
     gl.uniform1i(U.rT,0);gl.uniform1f(U.rl,L);gl.uniform1f(U.rR,now.rev.R);gl.uniform3f(U.ra,dot(V.X,a),dot(V.Y,a),dot(V.D,a));
     gl.uniform3fv(U.rw,col.gloss);gl.uniform3fv(U.rik,col.pupil);
     gl.uniform4fv(U.rey,now.ring||[0,0,0,0]);style("r");gl.drawArrays(gl.TRIANGLE_STRIP,0,4)}
   else{// each view keeps its parts on the card, sent again only when the body changes
     gl.useProgram(PB);gl.bindVertexArray(vaoB);if(!V.gb)V.gb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,V.gb);
-    if(fresh||!V.f){V.f=packed(V,parts);gl.bufferData(gl.ARRAY_BUFFER,V.f,gl.DYNAMIC_DRAW)}
+    if(!V.pt)V.pt=gl.createTexture();gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,V.pt);
+    if(fresh||!V.f){V.f=packed(V,parts);gl.bufferData(gl.ARRAY_BUFFER,V.f,gl.DYNAMIC_DRAW);
+      // (W3i) the same parts as a table the rounded joins read their neighbours from, each
+      // with its bounding ball in the view's frame
+      const T=new Float32Array(parts.length*24),to=p=>[dot(V.X,p),dot(V.Y,p),dot(V.D,p)];
+      parts.forEach((q,i)=>{T.set(V.f.subarray(20*i,20*i+20),24*i);
+        const[c,b]=q.k==1?[mul(add(q.p[0],q.p[1]),.5),len(sub(q.p[0],q.p[1]))/2+max(q.r,q.r2)]:q.k==2?[[0,0,0],q.r]:[q.c,max(...q.ax)];T.set([...to(c),b],24*i+20)});
+      gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA32F,6,parts.length,0,gl.RGBA,gl.FLOAT,T);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST)}
     U.at.forEach((a,i)=>gl.vertexAttribPointer(a,4,gl.FLOAT,false,80,16*i));
+    gl.enableVertexAttribArray(U.nbA);gl.bindBuffer(gl.ARRAY_BUFFER,U.nbB);gl.vertexAttribPointer(U.nbA,4,gl.FLOAT,false,0,0);
+    gl.uniform1i(U.Pt,4);gl.uniform1i(U.Nb,5);gl.uniform1i(U.Hd,6);
+    gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,U.nbT);gl.activeTexture(gl.TEXTURE0);
     gl.uniform1f(U.l,L);gl.uniform3fv(U.w,col.gloss);style("");
+    // the hard surface's depth first, then the rounded surface, never behind it
+    const round_=KC>0&&U.nbs>0;
+    if(round_){gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,null);gl.activeTexture(gl.TEXTURE0);
+      gl.bindFramebuffer(gl.FRAMEBUFFER,U.fbH);gl.clear(gl.DEPTH_BUFFER_BIT);gl.uniform1f(U.kb,0);
+      gl.drawArraysInstanced(gl.TRIANGLE_STRIP,0,4,parts.length);gl.bindFramebuffer(gl.FRAMEBUFFER,U.fb)}
+    gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,U.fh);gl.activeTexture(gl.TEXTURE0);
+    gl.uniform1f(U.kb,round_?1:0);gl.uniform1f(U.walk,walkNow?1:0);
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP,0,4,parts.length)}
+    copy(U.fb,V.kfb);V.kept=true}
   // its eyes, made again each frame: they look about, and turn with a spinning body
   const ep=(E=>bending()?E.map(q=>bendPart(q,now.dirs.forward,bendN,.5*bent)):E)(eyeParts(R));
   if(ep.length){gl.useProgram(PB);gl.bindVertexArray(vaoB);if(!V.eb)V.eb=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,V.eb);
     gl.bufferData(gl.ARRAY_BUFFER,packed(V,ep),gl.DYNAMIC_DRAW);U.at.forEach((a,i)=>gl.vertexAttribPointer(a,4,gl.FLOAT,false,80,16*i));
+    // eyes keep their own exact surfaces: no neighbours
+    gl.disableVertexAttribArray(U.nbA);gl.vertexAttrib4f(U.nbA,0,0,0,0);
     gl.uniform1f(U.l,L);gl.uniform3fv(U.w,col.gloss);gl.uniform3fv(U.ik,col.pupil);gl.uniform3fv(U.pc,col.per);style("");
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP,0,4,ep.length)}
   // set down onto the view's card, with its creases and its depth
@@ -1425,7 +1675,7 @@ function draw(){x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,CW,CH);
     redo=!shaped||bending()||walking()||R&&!now.G.ball&&!(now.G.name.includes("inf")),
     base=walking()?(Y=>now.body.map(q=>swing(q,Y,gaitA*sin(gaitP-(gaitP-was.gaitP)*(1-tw)))))(acrossOf()):now.body,
     parts=(Q=>bending()?Q.map(q=>bendPart(q,now.dirs.forward,bendN,.5*bent)):Q)(R&&redo?base.map(q=>act(R,q)):base);
-  if(gl){cards();for(const V of VIEWS)glView(V,parts,redo,R)}
+  if(gl){cards();if(!turned())nbUp(parts);for(const V of VIEWS)glView(V,parts,redo,R)}
   for(const V of VIEWS){const[x0,y0,side]=V.r;
     x.save();x.beginPath();x.rect(x0,y0,side,side);x.clip();
     x.fillStyle=col.paper;x.fillRect(x0,y0,side,side);

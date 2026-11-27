@@ -90,15 +90,24 @@ What whatsleftisright.com does. A golf pass must keep every line true.
     form, 4.5 page pixels apart, covering more of the paper as the light leaves
     it, at most 46 in 100, and a second set across them past two thirds of shade;
     an outline about a pixel wide where the surface turns away, and a line where
-    two parts meet; under them a wash of the body's glaze. Without WebGL 2 the
-    body is drawn in silhouette.
+    two parts meet; under them a wash of the body's glaze. Where a part's lines
+    crowd closer than a pixel can part them (a limb seen end on), they fade to the
+    share of paper they cover, so the tone holds. Where two parts meet
+    and the join can be seen, it is drawn rounded, over a width of half the
+    thinner part's thickness (chosen); each part keeps its own lines. A join
+    narrower than a third of a pixel is left sharp. Every turn and mirror of a
+    rounded join is rounded alike, so the drawing keeps the body's symmetry.
+    While a hand turns the cameras, the outline's rounding waits until it lets
+    go. The rounding is drawn, not the body: what the body reaches, eats and
+    stands on are its parts'. Without WebGL 2 the body is drawn in silhouette.
 12. Colours come from the house tokens: paper behind each view, the body washed
     in its glaze. A dot after the theme button turns the glazes through three
     families. Eyes keep their colours in either theme. Dark mode follows the
     system until the theme button turns it for the visit; nothing is kept.
-13. On a full screen the page is seen whole without scrolling: the label beneath
-    the drawing, or beside it where that leaves the drawing larger, its last line
-    standing on the drawing's foot.
+13. On a full screen the page is seen whole without scrolling: the buttons and
+    the label beneath the drawing, or beside it where that leaves the drawing
+    larger, the buttons level with its head and the label's last line standing
+    on its foot, so a label grown by a line moves no button.
 14. A screen reader hears the world and what it leaves ("Down and forward. One
     mirror is left."), and "Placed." while a foundling is.
 15. A click on the drawing, not a drag, drops a crumb there, at the middle's depth
