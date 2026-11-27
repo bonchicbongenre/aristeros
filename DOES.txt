@@ -93,13 +93,16 @@ What whatsleftisright.com does. A golf pass must keep every line true.
     two parts meet; under them a wash of the body's glaze. Where a part's lines
     crowd closer than a pixel can part them (a limb seen end on), they fade to the
     share of paper they cover, so the tone holds. Where two parts meet
-    and the join can be seen, it is drawn rounded, over a width of half the
-    thinner part's thickness (chosen); each part keeps its own lines. A join
+    and the join can be seen, it is shaded rounded, over a width of half the
+    thinner part's thickness (chosen), narrower where the two surfaces run nearly
+    together, and the line where they meet fades into it. Each part keeps its own
+    lines and its own outline, so nothing is drawn beyond the parts; a turned
+    body, drawn from its section, is rounded in its outline too. Where several
+    parts meet at one place, the deepest of their roundings is taken. A join
     narrower than a third of a pixel is left sharp. Every turn and mirror of a
-    rounded join is rounded alike, so the drawing keeps the body's symmetry.
-    While a hand turns the cameras, the outline's rounding waits until it lets
-    go. The rounding is drawn, not the body: what the body reaches, eats and
-    stands on are its parts'. Without WebGL 2 the body is drawn in silhouette.
+    rounded join is rounded alike, so the drawing keeps the body's symmetry. The
+    rounding is drawn, not the body: what the body reaches, eats and stands on
+    are its parts'. Without WebGL 2 the body is drawn in silhouette.
 12. Colours come from the house tokens: paper behind each view, the body washed
     in its glaze. A dot after the theme button turns the glazes through three
     families. Eyes keep their colours in either theme. Dark mode follows the
